@@ -22,6 +22,7 @@
   --color-card-border: rgba(45, 139, 186, 0.2);
   --color-card-border-bright: rgba(45, 139, 186, 0.4);
   --color-sonar: #00ffc8;
+  --color-glass: rgba(7, 19, 30, 0.85);
 }
 
 body {
@@ -240,4 +241,63 @@ textarea::placeholder {
   letter-spacing: 0.05em;
   color: #e2e8f0;
   margin-bottom: 1rem;
+}
+
+@keyframes sonar-pulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.05); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.depth-line {
+  border-left: 2px solid var(--color-card-border);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #0d2136;
+  border-radius: 2px;
+}
+
+.bubble-bg::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.06) 0%, transparent 70%);
+  top: 10%;
+  left: -5%;
+  animation: float-bubble 20s ease-in-out infinite;
+}
+
+.bubble-bg::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.04) 0%, transparent 70%);
+  bottom: 15%;
+  right: -3%;
+  animation: float-bubble 15s ease-in-out infinite reverse;
+}
+
+@keyframes float-bubble {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(30px, -20px); }
+  50% { transform: translate(-10px, 20px); }
+  75% { transform: translate(20px, 10px); }
 }
