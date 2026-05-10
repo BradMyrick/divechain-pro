@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+@theme {
+  --color-abyss: #010a14;
+  --color-deep: #07131e;
+  --color-ocean: #0a1929;
+  --color-navy: #0d2136;
+  --color-steel: #1a6fa0;
+  --color-bismuth: #2d8bba;
+  --color-teal: #0d9488;
+  --color-cyan: #06b6d4;
+  --color-surf: #22d3ee;
+  --color-foam: #67e8f9;
+  --color-bubble: #a5f3fc;
+  --color-coral: #ff6b6b;
+  --color-gold: #fbbf24;
+  --color-sand: #fde68a;
+  --color-kelp: #10b981;
+  --color-warn: #eab308;
+  --color-danger: #ef4444;
+  --color-card: #0b1722;
+  --color-card-border: rgba(45, 139, 186, 0.2);
+  --color-card-border-bright: rgba(45, 139, 186, 0.4);
+  --color-sonar: #00ffc8;
+}
+
+body {
+  /* Adjusted background to match the deep, uniform dark navy of the mock */
+  background: #010a14;
+  background-attachment: fixed;
+  color: #8b9eb0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* Headings and Titles */
+h1,
+h2,
+h3,
+h4,
+.text-heading {
+  color: #e2e8f0;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #010a14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0d2136;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1a6fa0;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+input,
+select,
+textarea {
+  background-color: #07131e !important;
+  border: 1px solid var(--color-card-border) !important;
+  color: #e2e8f0 !important;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #2d8bba !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(45, 139, 186, 0.15);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #4a6a80 !important;
+}
+
+/* Subtle background fx */
+.bubble-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Cards updated to match solid dark panels with thin borders */
+.glass-card {
+  background: #0b1722;
+  border: 1px solid var(--color-card-border);
+  border-radius: 0.75rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.glass-card:hover {
+  border-color: var(--color-card-border-bright);
+}
+
+.glass-card-inner {
+  background: #07131e;
+  border: 1px solid rgba(45, 139, 186, 0.1);
+  border-radius: 0.5rem;
+}
+
+/* Metrics and Stats Boxes */
+.stat-box {
+  background: #0d1a27;
+  border: 1px solid var(--color-card-border);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  color: #ffffff;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b9eb0;
+}
+
+/* Status Indicators */
+.text-success {
+  color: #10b981;
+  font-size: 0.85rem;
+}
+
+.tag-verified {
+  color: #10b981;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* Primary Action Button updated to match the bright cyan with dark text */
+.btn-primary {
+  background: linear-gradient(90deg, #67e8f9, #22d3ee);
+  color: #010a14;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+  box-shadow: 0 4px 15px rgba(34, 211, 238, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(90deg, #a5f3fc, #67e8f9);
+  box-shadow: 0 4px 20px rgba(34, 211, 238, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Header & Navigation */
+.nav-link {
+  color: #d1dce8;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.5rem 0;
+  transition: color 0.2s;
+  position: relative;
+}
+
+.nav-link:hover {
+  color: #ffffff;
+}
+
+/* Active Nav Underline matching the "DASHBOARD" tab */
+.nav-link.active {
+  color: #ffffff;
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #22d3ee;
+  border-radius: 2px;
+}
+
+/* Outline Buttons (e.g. CONNECT WALLET) */
+.btn-outline {
+  background: transparent;
+  color: #22d3ee;
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.btn-outline:hover {
+  background: rgba(34, 211, 238, 0.1);
+  border-color: #22d3ee;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #e2e8f0;
+  margin-bottom: 1rem;
+}
