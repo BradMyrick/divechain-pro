@@ -2,38 +2,47 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useDiveContract } from "../contexts/DiveContractContext";
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import {
-  BookOpenIcon,
-  PencilSquareIcon,
-  UserIcon,
-  GlobeAltIcon,
-  WrenchScrewdriverIcon,
-  UserGroupIcon,
-} from "@heroicons/react/24/outline";
+  BookOpen,
+  PenSquare,
+  User,
+  Globe,
+  Wrench,
+  Users,
+  Menu,
+  X,
+  Anchor,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-type IconComponent = ComponentType<{ className?: string }>;
+type NavItem = {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  needsContract: boolean;
+};
 
 type NavGroup = {
   label: string;
-  items: { path: string; label: string; icon: IconComponent; needsContract: boolean }[];
+  items: NavItem[];
 };
 
 const NAV_GROUPS: NavGroup[] = [
   {
     label: "My Log",
     items: [
-      { path: "/logbook", label: "Logbook", icon: BookOpenIcon, needsContract: true },
-      { path: "/log-dive", label: "Log Dive", icon: PencilSquareIcon, needsContract: true },
-      { path: "/profile", label: "Profile", icon: UserIcon, needsContract: false },
+      { path: "/logbook", label: "Logbook", icon: BookOpen, needsContract: true },
+      { path: "/log-dive", label: "Log Dive", icon: PenSquare, needsContract: true },
+      { path: "/profile", label: "Profile", icon: User, needsContract: false },
     ],
   },
   {
     label: "Explore",
     items: [
-      { path: "/dive-sites", label: "Dive Sites", icon: GlobeAltIcon, needsContract: false },
-      { path: "/tools", label: "Dive Tools", icon: WrenchScrewdriverIcon, needsContract: false },
-      { path: "/community", label: "Community", icon: UserGroupIcon, needsContract: false },
+      { path: "/dive-sites", label: "Dive Sites", icon: Globe, needsContract: false },
+      { path: "/tools", label: "Dive Tools", icon: Wrench, needsContract: false },
+      { path: "/community", label: "Community", icon: Users, needsContract: false },
     ],
   },
 ];
@@ -52,32 +61,35 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <div className="min-h-screen flex relative">
       <div className="bubble-bg" />
 
-      <header className="border-b border-card-border-bright bg-glass backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2.5 no-underline shrink-0">
-            <img
-              src="/DC-LOGO-SCUBA.png"
-              alt="Divechain"
-              className="w-9 h-9 rounded-lg object-contain shadow-lg shadow-teal/20"
-            />
-            <div className="flex flex-col">
-              <span className="text-lg font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent leading-tight">
-                Divechain
-              </span>
-              <span className="text-[9px] uppercase tracking-[0.2em] text-bismuth/60 leading-none hidden sm:block">
-                Sovereign Dive Log
-              </span>
-            </div>
-          </Link>
+      {/* Desktop Sidebar */}
+      {isConnected && (
+        <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-r border-card-border bg-card/50 backdrop-blur-sm relative z-20 h-screen sticky top-0">
+          <div className="p-5 border-b border-card-border">
+            <Link to="/" className="flex items-center gap-2.5 no-underline">
+              <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
+                <Anchor className="w-5 h-5 text-surf" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-base font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent leading-tight">
+                  Divechain
+                </span>
+                <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none">
+                  Sovereign Dive Log
+                </span>
+              </div>
+            </Link>
+          </div>
 
-          {isConnected && (
-            <nav className="hidden lg:flex items-center gap-1">
-              {NAV_GROUPS.map((group, gi) => (
-                <div key={group.label} className="flex items-center gap-1">
-                  {gi > 0 && <div className="w-px h-5 bg-card-border mx-2" />}
+          <nav className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="text-[10px] uppercase tracking-[0.15em] text-text-tertiary font-semibold px-3 mb-1.5">
+                  {group.label}
+                </p>
+                <div className="space-y-0.5">
                   {group.items.map((item) => {
                     const disabled = item.needsContract && !hasContract;
                     return (
@@ -85,81 +97,114 @@ export default function Layout() {
                         key={item.path}
                         to={disabled ? "#" : item.path}
                         onClick={(e) => { if (disabled) e.preventDefault(); }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium no-underline transition-all ${
-                          isActive(item.path)
-                            ? "bg-steel/30 text-foam"
-                            : disabled
-                            ? "text-gray-700 cursor-not-allowed"
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
-                        }`}
+                        className={`sidebar-nav-item ${isActive(item.path) ? "active" : ""} ${disabled ? "disabled" : ""}`}
                       >
-                        <item.icon className="w-4 h-4" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))}
-            </nav>
-          )}
-
-          <div className="flex items-center gap-2">
-            {isConnected && (
-              <button
-                onClick={() => setMobileMenu(!mobileMenu)}
-                className="lg:hidden p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 12h18M3 6h18M3 18h18" />
-                </svg>
-              </button>
-            )}
-            <ConnectButton />
-          </div>
-        </div>
-
-        {mobileMenu && isConnected && (
-          <div className="lg:hidden border-t border-card-border bg-deep/95 backdrop-blur-md px-4 py-3 space-y-4">
-            {NAV_GROUPS.map((group) => (
-              <div key={group.label}>
-                <p className="text-[10px] uppercase tracking-widest text-gray-600 mb-2">{group.label}</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {group.items.map((item) => {
-                    const disabled = item.needsContract && !hasContract;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={disabled ? "#" : item.path}
-                        onClick={(e) => {
-                          if (disabled) e.preventDefault();
-                          else setMobileMenu(false);
-                        }}
-                        className={`flex flex-col items-center gap-1 p-2 rounded-lg no-underline transition-all ${
-                          isActive(item.path) ? "bg-steel/20 text-surf" : disabled ? "text-gray-700" : "text-gray-400"
-                        }`}
-                      >
-                        <item.icon className="w-5 h-5" />
-                        <span className="text-[10px]">{item.label}</span>
+                        <item.icon className="w-[18px] h-[18px]" />
+                        <span>{item.label}</span>
                       </Link>
                     );
                   })}
                 </div>
               </div>
             ))}
-          </div>
-        )}
-      </header>
+          </nav>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 relative z-10">
-        <Outlet />
+          <div className="p-4 border-t border-card-border">
+            <div className="flex items-center justify-center">
+              <ConnectButton accountStatus="avatar" showBalance={false} chainStatus="icon" />
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* Mobile Header */}
+      {isConnected && (
+        <header className="lg:hidden fixed top-0 left-0 right-0 bg-card/95 backdrop-blur-md border-b border-card-border z-50">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2 no-underline">
+              <div className="w-8 h-8 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
+                <Anchor className="w-4 h-4 text-surf" />
+              </div>
+              <span className="text-sm font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent">
+                Divechain
+              </span>
+            </Link>
+            <div className="flex items-center gap-2">
+              <ConnectButton accountStatus="avatar" showBalance={false} chainStatus="icon" />
+              <button
+                onClick={() => setMobileMenu(!mobileMenu)}
+                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5"
+              >
+                {mobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {mobileMenu && (
+            <div className="border-t border-card-border bg-deep/95 backdrop-blur-md px-4 py-3 space-y-3">
+              {NAV_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="text-[10px] uppercase tracking-widest text-text-tertiary mb-2">{group.label}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {group.items.map((item) => {
+                      const disabled = item.needsContract && !hasContract;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={disabled ? "#" : item.path}
+                          onClick={(e) => {
+                            if (disabled) e.preventDefault();
+                            else setMobileMenu(false);
+                          }}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-lg no-underline transition-all ${
+                            isActive(item.path) ? "bg-steel/20 text-surf" : disabled ? "text-text-tertiary" : "text-gray-400"
+                          }`}
+                        >
+                          <item.icon className="w-5 h-5" />
+                          <span className="text-[10px]">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </header>
+      )}
+
+      {/* Disconnected Header */}
+      {!isConnected && (
+        <header className="border-b border-card-border bg-glass backdrop-blur-md sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            <Link to="/" className="flex items-center gap-2.5 no-underline shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
+                <Anchor className="w-5 h-5 text-surf" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent leading-tight">
+                  Divechain
+                </span>
+                <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none">
+                  Sovereign Dive Log
+                </span>
+              </div>
+            </Link>
+            <ConnectButton />
+          </div>
+        </header>
+      )}
+
+      {/* Main Content */}
+      <main className={`flex-1 min-w-0 relative z-10 ${isConnected ? "lg:pt-0 pt-14" : ""}`}>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 pb-24 lg:pb-8">
+          <Outlet />
+        </div>
       </main>
 
-      <footer className="border-t border-card-border py-6 text-center text-xs text-gray-600 relative z-10">
-        <p>Divechain {"\u00B7"} Sovereign On-Chain Dive Log {"\u00B7"} Built on Avalanche</p>
-      </footer>
-
+      {/* Mobile Bottom Nav */}
       {isConnected && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-deep/95 backdrop-blur-md border-t border-card-border-bright z-50">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-card-border-bright z-50">
           <div className="flex justify-around py-2">
             {ALL_ITEMS.slice(0, 5).map((item) => {
               const disabled = item.needsContract && !hasContract;
@@ -172,7 +217,7 @@ export default function Layout() {
                     isActive(item.path)
                       ? "text-surf"
                       : disabled
-                      ? "text-gray-700"
+                      ? "text-text-tertiary"
                       : "text-gray-500"
                   }`}
                 >

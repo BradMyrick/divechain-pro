@@ -16,7 +16,7 @@ import {
   BREATHING_GAS_LABELS,
   DECOMP_TYPE_LABELS,
 } from "../lib/contracts";
-import { BookOpenIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { BookOpen, CheckCircle } from "lucide-react";
 
 export default function LogDive() {
   const navigate = useNavigate();
@@ -98,8 +98,8 @@ export default function LogDive() {
     return (
       <div className="max-w-md mx-auto text-center py-16">
         <div className="glass-card p-8">
-          <BookOpenIcon className="w-12 h-12 text-bismuth/50 mx-auto mb-4" />
-          <p className="text-gray-400 mb-6">No dive log found. Deploy one first.</p>
+          <BookOpen className="w-12 h-12 text-bismuth/50 mx-auto mb-4" />
+          <p className="text-text-secondary mb-6">No dive log found. Deploy one first.</p>
           <button onClick={() => navigate("/deploy")} className="btn-primary">
             Create Dive Log
           </button>
@@ -112,7 +112,7 @@ export default function LogDive() {
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Log a Dive</h1>
-        <p className="text-xs text-gray-500 mt-1">Record your dive data on-chain, permanently.</p>
+        <p className="text-xs text-text-tertiary mt-1">Record your dive data on-chain, permanently.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -285,7 +285,7 @@ export default function LogDive() {
         {isSuccess && (
           <div className="glass-card-inner p-4 text-center border-kelp/30">
             <p className="text-kelp font-medium flex items-center justify-center gap-2">
-              <CheckCircleIcon className="w-5 h-5" /> Dive logged successfully!
+              <CheckCircle className="w-5 h-5" /> Dive logged successfully!
             </p>
             <button
               type="button"

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import {
-  HandThumbUpIcon,
-  ChatBubbleLeftIcon,
-  MegaphoneIcon,
-} from "@heroicons/react/24/outline";
+  ThumbsUp,
+  MessageCircle,
+  Megaphone,
+} from "lucide-react";
 
 interface Post {
   id: number;
@@ -63,7 +63,7 @@ export default function Community() {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-2xl font-bold text-white">Community</h1>
-          <p className="text-xs text-gray-500 mt-1">Connect with fellow divers, share experiences, ask questions.</p>
+          <p className="text-xs text-text-tertiary mt-1">Connect with fellow divers, share experiences, ask questions.</p>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export default function Community() {
             className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
               activeTag === tag
                 ? "bg-teal/20 text-surf border-teal/30"
-                : "bg-ocean/20 text-gray-400 border-card-border hover:text-gray-200"
+                : "bg-ocean/20 text-text-secondary border-card-border hover:text-gray-200"
             }`}
           >
             {tag}
@@ -93,19 +93,19 @@ export default function Community() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-medium text-white">{post.author}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${TAG_COLORS[post.tag] || "bg-navy/20 text-gray-400 border-card-border"}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${TAG_COLORS[post.tag] || "bg-navy/20 text-text-secondary border-card-border"}`}>
                     {post.tag}
                   </span>
-                  <span className="text-[10px] text-gray-600 ml-auto">{post.time}</span>
+                  <span className="text-[10px] text-text-tertiary ml-auto">{post.time}</span>
                 </div>
                 <h3 className="text-sm font-semibold text-gray-200 mb-1">{post.title}</h3>
-                <p className="text-xs text-gray-500 line-clamp-2">{post.body}</p>
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                <p className="text-xs text-text-tertiary line-clamp-2">{post.body}</p>
+                <div className="flex items-center gap-4 mt-2 text-xs text-text-tertiary">
                   <span className="flex items-center gap-1">
-                    <HandThumbUpIcon className="w-3.5 h-3.5 text-teal" /> {post.likes}
+                    <ThumbsUp className="w-3.5 h-3.5 text-teal" /> {post.likes}
                   </span>
                   <span className="flex items-center gap-1">
-                    <ChatBubbleLeftIcon className="w-3.5 h-3.5 text-bismuth" /> {post.replies}
+                    <MessageCircle className="w-3.5 h-3.5 text-bismuth" /> {post.replies}
                   </span>
                 </div>
               </div>
@@ -115,9 +115,9 @@ export default function Community() {
       </div>
 
       <div className="glass-card p-6 mt-8 text-center">
-        <MegaphoneIcon className="w-8 h-8 text-bismuth/50 mx-auto mb-3" />
+        <Megaphone className="w-8 h-8 text-bismuth/50 mx-auto mb-3" />
         <h3 className="text-sm font-semibold text-white mb-2">Coming Soon: On-Chain Community</h3>
-        <p className="text-xs text-gray-500 max-w-md mx-auto">
+        <p className="text-xs text-text-tertiary max-w-md mx-auto">
           Community posts, dive buddy reviews, and dive site ratings will be anchored on-chain for permanent, verifiable records.
         </p>
       </div>

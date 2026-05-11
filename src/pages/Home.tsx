@@ -3,16 +3,16 @@ import { useAccount } from "wagmi";
 import { useNavigate } from "react-router-dom";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import {
-  ExclamationTriangleIcon,
-  LockClosedIcon,
-  CheckIcon,
-  ShieldCheckIcon,
-  BoltIcon,
-  GlobeAltIcon,
-  WrenchScrewdriverIcon,
-  UserGroupIcon,
-  BookOpenIcon,
-} from "@heroicons/react/24/outline";
+  AlertTriangle,
+  Lock,
+  Check,
+  ShieldCheck,
+  Zap,
+  Globe,
+  Wrench,
+  Users,
+  BookOpen,
+} from "lucide-react";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -23,8 +23,7 @@ export default function Home() {
 
   return (
     <div className="w-full max-w-[1600px] mx-auto min-h-[calc(100vh-80px)] flex flex-col lg:flex-row text-left">
-
-      <div className="hidden lg:flex w-[300px] xl:w-[380px] flex-col items-center justify-center p-8 border-r border-[var(--color-card-border)] bg-[#010a14]/50">
+      <div className="hidden lg:flex w-[300px] xl:w-[380px] flex-col items-center justify-center p-8 border-r border-card-border bg-[#010a14]/50">
         <div className="relative mb-8 w-full flex justify-center">
           <img
             src="/DC-LOGO-SCUBA.png"
@@ -40,7 +39,6 @@ export default function Home() {
       </div>
 
       <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 gap-6 overflow-x-hidden">
-
         <div className="flex lg:hidden items-center justify-center gap-3 mb-4 mt-2">
           <img src="/DC-LOGO-SCUBA.png" alt="Divechain" className="w-12 h-12 object-contain" />
           <h1 className="text-2xl font-bold tracking-widest text-white">
@@ -49,10 +47,8 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col xl:flex-row gap-6">
-
           <div className="glass-card flex-1 p-6 sm:p-8 relative min-h-[340px] flex flex-col justify-between overflow-hidden">
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-              style={{ backgroundImage: 'radial-gradient(#22d3ee 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#22d3ee 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
             <h2 className="section-title relative z-10">Global Dive Network</h2>
 
@@ -60,17 +56,17 @@ export default function Home() {
               <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight">
                 Your sovereign, on-chain dive log.
               </h3>
-              <p className="text-[15px] text-[#8b9eb0] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[15px] text-text-secondary leading-relaxed mb-6 max-w-lg">
                 Cryptographically verified diving history on the Avalanche network.
                 Secure your certifications, track bottom time, and explore global dive activity through decentralized technology.
               </p>
 
               {!isConnected && (
-                <div className="p-4 bg-[#07131e] border border-[var(--color-card-border)] rounded-lg inline-block w-fit">
+                <div className="p-4 bg-deep border border-card-border rounded-lg inline-block w-fit">
                   <p className="text-sm text-gray-300 mb-1 flex items-center gap-2">
-                    <ExclamationTriangleIcon className="w-4 h-4 text-warn" /> Wallet disconnected
+                    <AlertTriangle className="w-4 h-4 text-warn" /> Wallet disconnected
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-text-tertiary">
                     Click <strong className="text-surf">Connect Wallet</strong> in the navigation bar to access your logs.
                   </p>
                 </div>
@@ -79,51 +75,49 @@ export default function Home() {
           </div>
 
           <div className="glass-card w-full xl:w-[380px] flex flex-col h-[340px] overflow-hidden">
-            <div className="p-4 border-b border-[var(--color-card-border)] flex justify-between items-center bg-[#07131e]/50">
+            <div className="p-4 border-b border-card-border flex justify-between items-center bg-deep/50">
               <h2 className="section-title mb-0">Protocol Features</h2>
-              <span className="text-xs text-[#8b9eb0]">{">"}</span>
+              <span className="text-xs text-text-secondary">{">"}</span>
             </div>
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 custom-scrollbar">
-
-              <div className="p-3 bg-[#0b1722] rounded-md border border-[var(--color-card-border)] hover:border-surf/30 transition-colors">
+              <div className="p-3 bg-card rounded-md border border-card-border hover:border-surf/30 transition-colors">
                 <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0d2136] border border-[#2d8bba]/20 flex items-center justify-center shrink-0">
-                    <LockClosedIcon className="w-5 h-5 text-teal" />
+                  <div className="w-10 h-10 rounded-full bg-navy/60 border border-bismuth/20 flex items-center justify-center shrink-0">
+                    <Lock className="w-5 h-5 text-teal" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-200 font-medium">Sovereign Ownership</p>
-                    <p className="text-[11px] text-[#8b9eb0] mt-1 leading-snug">Your dive data lives in a contract you own. No central authority can alter your records.</p>
-                    <p className="tag-verified mt-2 flex items-center gap-1"><CheckIcon className="w-3 h-3" /> Verified Secure</p>
+                    <p className="text-[11px] text-text-secondary mt-1 leading-snug">Your dive data lives in a contract you own. No central authority can alter your records.</p>
+                    <p className="tag-verified mt-2 flex items-center gap-1"><Check className="w-3 h-3" /> Verified Secure</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 bg-[#0b1722] rounded-md border border-[var(--color-card-border)] hover:border-surf/30 transition-colors">
+              <div className="p-3 bg-card rounded-md border border-card-border hover:border-surf/30 transition-colors">
                 <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0d2136] border border-[#2d8bba]/20 flex items-center justify-center shrink-0">
-                    <ShieldCheckIcon className="w-5 h-5 text-teal" />
+                  <div className="w-10 h-10 rounded-full bg-navy/60 border border-bismuth/20 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-teal" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-200 font-medium">Buddy Attestations</p>
-                    <p className="text-[11px] text-[#8b9eb0] mt-1 leading-snug">EIP-712 cryptographic signatures from dive buddies verify your dives happened.</p>
-                    <p className="tag-verified mt-2 flex items-center gap-1"><CheckIcon className="w-3 h-3" /> On-Chain Proof</p>
+                    <p className="text-[11px] text-text-secondary mt-1 leading-snug">EIP-712 cryptographic signatures from dive buddies verify your dives happened.</p>
+                    <p className="tag-verified mt-2 flex items-center gap-1"><Check className="w-3 h-3" /> On-Chain Proof</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 bg-[#0b1722] rounded-md border border-[var(--color-card-border)] hover:border-surf/30 transition-colors">
+              <div className="p-3 bg-card rounded-md border border-card-border hover:border-surf/30 transition-colors">
                 <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0d2136] border border-[#2d8bba]/20 flex items-center justify-center shrink-0">
-                    <BoltIcon className="w-5 h-5 text-teal" />
+                  <div className="w-10 h-10 rounded-full bg-navy/60 border border-bismuth/20 flex items-center justify-center shrink-0">
+                    <Zap className="w-5 h-5 text-teal" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-200 font-medium">Avalanche Network</p>
-                    <p className="text-[11px] text-[#8b9eb0] mt-1 leading-snug">Sub-second finality, low fees, permanent storage. Your dives outlast any service.</p>
-                    <p className="tag-verified mt-2 flex items-center gap-1"><CheckIcon className="w-3 h-3" /> Immutable</p>
+                    <p className="text-[11px] text-text-secondary mt-1 leading-snug">Sub-second finality, low fees, permanent storage. Your dives outlast any service.</p>
+                    <p className="tag-verified mt-2 flex items-center gap-1"><Check className="w-3 h-3" /> Immutable</p>
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -132,7 +126,7 @@ export default function Home() {
           <button onClick={() => navigate("/dive-sites")} className="stat-box text-left hover:border-surf/40 transition-colors group">
             <div className="stat-label">Verified Sites On-Chain</div>
             <div className="stat-value flex items-center gap-2 group-hover:text-surf transition-colors">
-              <GlobeAltIcon className="w-5 h-5" /> Explore
+              <Globe className="w-5 h-5" /> Explore
             </div>
             <div className="tag-verified mt-2">+ Global Regions</div>
           </button>
@@ -140,7 +134,7 @@ export default function Home() {
           <button onClick={() => navigate("/tools")} className="stat-box text-left hover:border-surf/40 transition-colors group">
             <div className="stat-label">Active Dive Planners</div>
             <div className="stat-value flex items-center gap-2 group-hover:text-surf transition-colors">
-              <WrenchScrewdriverIcon className="w-5 h-5" /> Dive Tools
+              <Wrench className="w-5 h-5" /> Dive Tools
             </div>
             <div className="tag-verified mt-2">+ NDL & SAC Rates</div>
           </button>
@@ -148,7 +142,7 @@ export default function Home() {
           <button onClick={() => navigate("/community")} className="stat-box text-left hover:border-surf/40 transition-colors group">
             <div className="stat-label">Active Divers</div>
             <div className="stat-value flex items-center gap-2 group-hover:text-surf transition-colors">
-              <UserGroupIcon className="w-5 h-5" /> Community
+              <Users className="w-5 h-5" /> Community
             </div>
             <div className="tag-verified mt-2">+ Network Socials</div>
           </button>
@@ -156,7 +150,7 @@ export default function Home() {
           <button onClick={() => navigate("/logbook")} className="stat-box text-left hover:border-surf/40 transition-colors group">
             <div className="stat-label">Personal Records</div>
             <div className="stat-value flex items-center gap-2 group-hover:text-surf transition-colors">
-              <BookOpenIcon className="w-5 h-5" /> My Logbook
+              <BookOpen className="w-5 h-5" /> My Logbook
             </div>
             <div className="tag-verified mt-2">+ Secure View</div>
           </button>
@@ -187,7 +181,7 @@ export default function Home() {
                 </button>
               ) : (
                 <div className="glass-card-inner p-5 w-full border border-surf/30">
-                  <p className="text-xs text-[#8b9eb0] mb-3 uppercase tracking-wider font-semibold">
+                  <p className="text-xs text-text-secondary mb-3 uppercase tracking-wider font-semibold">
                     Connect Existing SovereignDiveLog
                   </p>
                   <div className="flex gap-2">
@@ -211,7 +205,7 @@ export default function Home() {
                       Sync
                     </button>
                   </div>
-                  <button onClick={() => setShowImport(false)} className="text-xs text-gray-500 mt-4 hover:text-gray-300 w-full text-center transition-colors">
+                  <button onClick={() => setShowImport(false)} className="text-xs text-text-tertiary mt-4 hover:text-gray-300 w-full text-center transition-colors">
                     Cancel
                   </button>
                 </div>
@@ -219,7 +213,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

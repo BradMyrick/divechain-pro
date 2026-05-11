@@ -51,7 +51,7 @@ export default function Profile() {
   if (!isConnected) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-400">Connect your wallet to view profile.</p>
+        <p className="text-text-secondary">Connect your wallet to view profile.</p>
       </div>
     );
   }
@@ -71,12 +71,12 @@ export default function Profile() {
     <div className="max-w-lg mx-auto space-y-5">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Diver Profile</h1>
-        <p className="text-xs text-gray-500 mt-1">Manage your identity and dive log contract.</p>
+        <p className="text-xs text-text-tertiary mt-1">Manage your identity and dive log contract.</p>
       </div>
 
       <div className="glass-card p-5 space-y-3">
         <div className="section-title">Wallet</div>
-        <div className="text-xs font-mono text-gray-400 bg-abyss/40 rounded-lg px-3 py-2 break-all select-all">
+        <div className="text-xs font-mono text-text-secondary bg-abyss/40 rounded-lg px-3 py-2 break-all select-all">
           {address}
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function Profile() {
             <div className="text-xs font-mono text-bismuth bg-abyss/40 rounded-lg px-3 py-2 break-all select-all">
               {contractAddress}
             </div>
-            <div className="flex items-center gap-4 text-xs text-gray-500">
+            <div className="flex items-center gap-4 text-xs text-text-tertiary">
               <span>
                 Owner: {owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : "..."}
                 {isOwner ? <span className="text-kelp ml-1">(you)</span> : <span className="text-warn ml-1">(not owner)</span>}
@@ -109,7 +109,7 @@ export default function Profile() {
           </div>
         ) : (
           <div className="text-center py-4">
-            <p className="text-sm text-gray-400 mb-3">No dive log contract configured.</p>
+            <p className="text-sm text-text-secondary mb-3">No dive log contract configured.</p>
             <button onClick={() => navigate("/deploy")} className="btn-primary text-sm px-4 py-2">
               Deploy One Now
             </button>
@@ -127,7 +127,7 @@ export default function Profile() {
             <button onClick={handleSaveAddress} className="btn-primary text-sm px-4 py-2 shrink-0">
               Save
             </button>
-            <button onClick={() => setShowAddressInput(false)} className="text-xs text-gray-400 px-2">
+            <button onClick={() => setShowAddressInput(false)} className="text-xs text-text-secondary px-2">
               Cancel
             </button>
           </div>
