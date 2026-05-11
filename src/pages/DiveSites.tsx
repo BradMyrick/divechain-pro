@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GlobeAltIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Globe, ChevronRight } from "lucide-react";
 
 interface DiveRegion {
   id: string;
@@ -125,7 +125,7 @@ export default function DiveSites() {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-2xl font-bold text-white">Dive Sites Explorer</h1>
-          <p className="text-xs text-gray-500 mt-1">Select a region to explore conditions and top dive sites.</p>
+          <p className="text-xs text-text-tertiary mt-1">Select a region to explore conditions and top dive sites.</p>
         </div>
       </div>
 
@@ -190,7 +190,7 @@ export default function DiveSites() {
                   </g>
                 ))}
                 <line x1="0" y1="25" x2="100" y2="25" stroke="#064663" strokeWidth="0.15" strokeDasharray="1,2" />
-                <text x="2" y="4" fill="#4a6a80" fontSize="1.8">Divechain{" "}{"\u00B7"}{" "}Global Dive Conditions</text>
+                <text x="2" y="4" fill="#4a6a80" fontSize="1.8">Divechain{" "}{`\u00B7`}{" "}Global Dive Conditions</text>
                 <text x="85" y="48" fill="#4a6a80" fontSize="1.5">Click a pin</text>
               </svg>
             </div>
@@ -203,7 +203,7 @@ export default function DiveSites() {
                   className={`text-xs px-2 py-1.5 rounded-lg transition-all ${
                     selected?.id === r.id
                       ? "bg-teal/20 text-surf border border-teal/30"
-                      : "bg-ocean/30 text-gray-400 border border-card-border hover:border-bismuth/30 hover:text-gray-200"
+                      : "bg-ocean/30 text-text-secondary border border-card-border hover:border-bismuth/30 hover:text-gray-200"
                   }`}
                 >
                   {r.name}
@@ -217,20 +217,20 @@ export default function DiveSites() {
           {selected ? (
             <div className="glass-card p-5 space-y-4">
               <h2 className="text-lg font-bold text-white">{selected.name}</h2>
-              <p className="text-sm text-gray-400">{selected.description}</p>
+              <p className="text-sm text-text-secondary">{selected.description}</p>
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="stat-box">
                   <p className="text-sm font-bold text-surf">{selected.temp}</p>
-                  <p className="text-[9px] text-gray-500 uppercase">Water</p>
+                  <p className="text-[9px] text-text-tertiary uppercase">Water</p>
                 </div>
                 <div className="stat-box">
                   <p className="text-sm font-bold text-surf">{selected.visibility}</p>
-                  <p className="text-[9px] text-gray-500 uppercase">Visibility</p>
+                  <p className="text-[9px] text-text-tertiary uppercase">Visibility</p>
                 </div>
                 <div className="stat-box">
                   <p className="text-sm font-bold text-surf">{selected.bestSeason}</p>
-                  <p className="text-[9px] text-gray-500 uppercase">Season</p>
+                  <p className="text-[9px] text-text-tertiary uppercase">Season</p>
                 </div>
               </div>
 
@@ -239,7 +239,7 @@ export default function DiveSites() {
                 <ul className="space-y-1.5">
                   {selected.topSites.map((site) => (
                     <li key={site} className="flex items-center gap-2 text-sm text-gray-300">
-                      <ChevronRightIcon className="w-3 h-3 text-teal shrink-0" />
+                      <ChevronRight className="w-3 h-3 text-teal shrink-0" />
                       {site}
                     </li>
                   ))}
@@ -248,8 +248,8 @@ export default function DiveSites() {
             </div>
           ) : (
             <div className="glass-card p-6 text-center">
-              <GlobeAltIcon className="w-10 h-10 text-bismuth/50 mx-auto mb-3" />
-              <p className="text-sm text-gray-400">Click a region on the map or select from the list to explore dive conditions.</p>
+              <Globe className="w-10 h-10 text-bismuth/50 mx-auto mb-3" />
+              <p className="text-sm text-text-secondary">Click a region on the map or select from the list to explore dive conditions.</p>
             </div>
           )}
         </div>

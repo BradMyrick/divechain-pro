@@ -7,7 +7,7 @@ export default function DiveTools() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Dive Tools</h1>
-        <p className="text-xs text-gray-500 mt-1">Calculators and planners for safer diving.</p>
+        <p className="text-xs text-text-tertiary mt-1">Calculators and planners for safer diving.</p>
       </div>
 
       <div className="flex gap-2 mb-6">
@@ -22,7 +22,7 @@ export default function DiveTools() {
             className={`text-sm px-4 py-2 rounded-lg transition-all ${
               tool === key
                 ? "bg-teal/20 text-surf border border-teal/30"
-                : "bg-ocean/30 text-gray-400 border border-card-border hover:text-gray-200"
+                : "bg-ocean/30 text-text-secondary border border-card-border hover:text-gray-200"
             }`}
           >
             {label}
@@ -86,22 +86,22 @@ function ModCalculator() {
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{isFinite(mod) ? Math.round(mod) : "--"}</p>
-            <p className="text-[10px] text-gray-500 uppercase">{depthUnit} MOD</p>
+            <p className="text-[10px] text-text-tertiary uppercase">{depthUnit} MOD</p>
           </div>
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{isFinite(ead) && ead > 0 ? Math.round(ead) : "--"}</p>
-            <p className="text-[10px] text-gray-500 uppercase">{depthUnit} EAD</p>
+            <p className="text-[10px] text-text-tertiary uppercase">{depthUnit} EAD</p>
           </div>
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{bestMix > 0 && bestMix <= 100 ? bestMix : "--"}%</p>
-            <p className="text-[10px] text-gray-500 uppercase">Best Mix O2</p>
+            <p className="text-[10px] text-text-tertiary uppercase">Best Mix O2</p>
           </div>
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{o2 > 21 ? "EAN" + o2 : he > 0 ? `TMX ${o2}/${he}` : "Air"}</p>
-            <p className="text-[10px] text-gray-500 uppercase">Gas Name</p>
+            <p className="text-[10px] text-text-tertiary uppercase">Gas Name</p>
           </div>
         </div>
-        <div className="glass-card-inner p-3 text-xs text-gray-500">
+        <div className="glass-card-inner p-3 text-xs text-text-tertiary">
           <p><strong className="text-bismuth">MOD</strong> = Maximum Operating Depth at PO2 {ppo2}</p>
           <p><strong className="text-bismuth">EAD</strong> = Equivalent Air Depth for decompression</p>
           <p><strong className="text-bismuth">Best Mix</strong> = Optimal O2% for target depth</p>
@@ -144,18 +144,18 @@ function NdlPlanner() {
         <div className="grid grid-cols-3 gap-3">
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{ndl}</p>
-            <p className="text-[10px] text-gray-500 uppercase">NDL (min)</p>
+            <p className="text-[10px] text-text-tertiary uppercase">NDL (min)</p>
           </div>
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{rnt}</p>
-            <p className="text-[10px] text-gray-500 uppercase">RNT (min)</p>
+            <p className="text-[10px] text-text-tertiary uppercase">RNT (min)</p>
           </div>
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{totalTL}</p>
-            <p className="text-[10px] text-gray-500 uppercase">TTL (min)</p>
+            <p className="text-[10px] text-text-tertiary uppercase">TTL (min)</p>
           </div>
         </div>
-        <div className="glass-card-inner p-3 text-xs text-gray-500">
+        <div className="glass-card-inner p-3 text-xs text-text-tertiary">
           <p><strong className="text-bismuth">NDL</strong> = No-decompression limit (time at depth)</p>
           <p><strong className="text-bismuth">RNT</strong> = Residual nitrogen time (estimated)</p>
           <p><strong className="text-bismuth">TTL</strong> = Total time limit</p>
@@ -227,14 +227,14 @@ function SacCalculator() {
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{sac.toFixed(1)}</p>
-            <p className="text-[10px] text-gray-500 uppercase">{unit === "metric" ? "L/min" : "cu ft/min"} SAC</p>
+            <p className="text-[10px] text-text-tertiary uppercase">{unit === "metric" ? "L/min" : "cu ft/min"} SAC</p>
           </div>
           <div className="stat-box">
             <p className="text-2xl font-bold text-surf">{(sac * depthATM).toFixed(1)}</p>
-            <p className="text-[10px] text-gray-500 uppercase">{unit === "metric" ? "L/min" : "cu ft/min"} RMV</p>
+            <p className="text-[10px] text-text-tertiary uppercase">{unit === "metric" ? "L/min" : "cu ft/min"} RMV</p>
           </div>
         </div>
-        <div className="glass-card-inner p-3 text-xs text-gray-500">
+        <div className="glass-card-inner p-3 text-xs text-text-tertiary">
           <p><strong className="text-bismuth">SAC</strong> = Surface Air Consumption rate</p>
           <p><strong className="text-bismuth">RMV</strong> = Respiratory Minute Volume at depth</p>
           <p className="mt-1">Typical SAC: 12-20 L/min (relaxed), 20-30 L/min (working)</p>

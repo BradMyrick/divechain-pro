@@ -1,13 +1,29 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import { useDiveLog } from "../hooks/useDiveLog";
-import DiveCard from "../components/DiveCard";
-import { BookOpenIcon, DocumentPlusIcon } from "@heroicons/react/24/outline";
+import DiveDetail from "./DiveDetail";
+import {
+  BookOpen,
+  Plus,
+  FileText,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  Loader2,
+} from "lucide-react";
+import {
+  DIVE_MODE_LABELS,
+  DiveMode,
+  UnitSystem,
+  UNIT_SYSTEM_LABELS,
+} from "../lib/contracts";
 
 export default function Logbook() {
   const navigate = useNavigate();
   const { hasContract, contractAddress } = useDiveContract();
   const { diveCount, allDiveIds, isOwner, profile } = useDiveLog(contractAddress);
+  const [selectedDiveId, setSelectedDiveId] = useState<bigint | null>(null);
 
   const diverName = profile ? String((profile as Record<string, unknown>)?.name ?? "Diver") : "Diver";
 
@@ -15,9 +31,9 @@ export default function Logbook() {
     return (
       <div className="max-w-md mx-auto text-center py-16">
         <div className="glass-card p-8">
-          <BookOpenIcon className="w-12 h-12 text-bismuth/50 mx-auto mb-4" />
+          <BookOpen className="w-12 h-12 text-bismuth/50 mx-auto mb-4" />
           <h2 className="text-lg font-bold text-white mb-2">No dive log found</h2>
-          <p className="text-sm text-gray-400 mb-6">Deploy your sovereign dive logbook to get started.</p>
+          <p className="text-sm text-text-secondary mb-6">Deploy your sovereign dive logbook to get started.</p>
           <button onClick={() => navigate("/deploy")} className="btn-primary">
             Create Dive Log
           </button>
@@ -27,69 +43,107 @@ export default function Logbook() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
+    <div className="flex flex-col h-[calc(100vh-4rem)] lg:h-[calc(100vh-2rem)] -m-4 sm:-m-6 lg:-m-8">
+      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-xl font-bold text-white">
             {diverName !== "Diver" ? diverName : "Diver"}'s Logbook
           </h1>
-          <p className="text-xs text-gray-500 font-mono mt-1">{contractAddress}</p>
+          <p className="text-xs text-text-tertiary font-mono mt-0.5">{contractAddress}</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="stat-box px-4 py-2">
+          <div className="stat-box px-4 py-2 flex-row items-center gap-2">
             <span className="text-lg font-bold text-surf">
               {diveCount !== undefined ? diveCount.toString() : "--"}
             </span>
-            <span className="text-[10px] text-gray-500 ml-1.5 uppercase">dives</span>
+            <span className="text-[10px] text-text-tertiary uppercase">dives</span>
           </div>
           {isOwner && (
             <button
               onClick={() => navigate("/log-dive")}
-              className="btn-primary text-sm px-4 py-2"
+              className="btn-primary text-sm px-4 py-2 flex items-center gap-1.5"
             >
-              + Log Dive
+              <Plus className="w-4 h-4" /> Log Dive
             </button>
           )}
         </div>
       </div>
 
-      <div className="h-px bg-gradient-to-r from-transparent via-card-border-bright to-transparent my-6" />
-
-      {!allDiveIds || allDiveIds.length === 0 ? (
-        <div className="text-center py-20">
-          <DocumentPlusIcon className="w-12 h-12 text-bismuth/50 mx-auto mb-4 animate-[sway_3s_ease-in-out_infinite]" />
-          <h3 className="text-lg font-semibold text-white mb-2">No dives yet</h3>
-          <p className="text-sm text-gray-400 mb-6">Time to get wet. Log your first dive.</p>
-          {isOwner && (
-            <button
-              onClick={() => navigate("/log-dive")}
-              className="btn-primary"
-            >
-              Log Your First Dive
-            </button>
+      <div className="flex-1 flex min-h-0">
+        {/* Left Column: Dive List */}
+        <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 border-r border-card-border overflow-y-auto custom-scrollbar">
+          {!allDiveIds || allDiveIds.length === 0 ? (
+            <div className="text-center py-20 px-6">
+              <FileText className="w-12 h-12 text-bismuth/50 mx-auto mb-4 animate-[sway_3s_ease-in-out_infinite]" />
+              <h3 className="text-lg font-semibold text-white mb-2">No dives yet</h3>
+              <p className="text-sm text-text-secondary mb-6">Time to get wet. Log your first dive.</p>
+              {isOwner && (
+                <button
+                  onClick={() => navigate("/log-dive")}
+                  className="btn-primary"
+                >
+                  Log Your First Dive
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 space-y-2">
+              {allDiveIds.map((id) => (
+                <DiveListItem
+                  key={id.toString()}
+                  contractAddress={contractAddress!}
+                  diveId={id}
+                  isSelected={selectedDiveId === id}
+                  onSelect={() => setSelectedDiveId(id)}
+                />
+              ))}
+            </div>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {allDiveIds.map((id) => (
-            <DiveCardWrapper
-              key={id.toString()}
-              contractAddress={contractAddress!}
-              diveId={id}
-            />
-          ))}
+
+        {/* Right Column: Dive Detail */}
+        <div className="hidden lg:flex flex-1 overflow-y-auto custom-scrollbar">
+          {selectedDiveId ? (
+            <DiveDetail embedded diveId={selectedDiveId} />
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <BookOpen className="w-12 h-12 text-bismuth/30 mx-auto mb-3" />
+                <p className="text-sm text-text-tertiary">Select a dive to view details</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile: show DiveDetail page route */}
+      {selectedDiveId && (
+        <div className="lg:hidden fixed inset-0 top-14 bg-abyss z-40 overflow-y-auto">
+          <div className="p-4">
+            <button
+              onClick={() => setSelectedDiveId(null)}
+              className="text-sm text-text-secondary hover:text-white flex items-center gap-1 mb-4"
+            >
+              Back to list
+            </button>
+            <DiveDetail embedded diveId={selectedDiveId} />
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function DiveCardWrapper({
+function DiveListItem({
   contractAddress,
   diveId,
+  isSelected,
+  onSelect,
 }: {
   contractAddress: `0x${string}`;
   diveId: bigint;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
   const { useDive, useVoidInfo, useAttestations } = useDiveLog(contractAddress);
   const { data: dive } = useDive(diveId);
@@ -98,13 +152,9 @@ function DiveCardWrapper({
 
   if (!dive) {
     return (
-      <div className="glass-card p-4 animate-pulse">
-        <div className="h-4 bg-navy/50 rounded w-1/3 mb-3" />
-        <div className="grid grid-cols-3 gap-3">
-          <div className="h-10 bg-navy/50 rounded" />
-          <div className="h-10 bg-navy/50 rounded" />
-          <div className="h-10 bg-navy/50 rounded" />
-        </div>
+      <div className="glass-card p-3 animate-pulse">
+        <div className="h-3 bg-navy/50 rounded w-1/3 mb-2" />
+        <div className="h-3 bg-navy/50 rounded w-2/3" />
       </div>
     );
   }
@@ -112,19 +162,71 @@ function DiveCardWrapper({
   const d = dive as Record<string, unknown>;
   const data = d.data as Record<string, unknown>;
   const env = d.env as Record<string, unknown>;
+  const isVoided = voidInfo ? (voidInfo as Record<string, unknown>).isVoided as boolean : false;
+  const attCount = attestations && Array.isArray(attestations) ? (attestations as unknown[]).length : 0;
+  const units = Number(d.units ?? 0) as UnitSystem;
+  const depthUnit = UNIT_SYSTEM_LABELS[units] === "Metric" ? "m" : "ft";
+
+  const formatDate = (ts: bigint) =>
+    new Date(Number(ts) * 1000).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
 
   return (
-    <DiveCard
-      id={diveId}
-      diveDate={d.diveDate as bigint}
-      maxDepth={Number(data?.maxDepth ?? 0)}
-      bottomTimeMinutes={Number(data?.bottomTimeMinutes ?? 0)}
-      mode={Number(data?.mode ?? 0)}
-      purpose={Number(data?.purpose ?? 0)}
-      units={Number(d.units ?? 0)}
-      location={env?.location as string | undefined}
-      isVoided={voidInfo ? (voidInfo as Record<string, unknown>).isVoided as boolean : false}
-      attestationCount={attestations && Array.isArray(attestations) ? (attestations as unknown[]).length : 0}
-    />
+    <button
+      onClick={onSelect}
+      className={`w-full text-left glass-card p-3 transition-all cursor-pointer ${
+        isSelected
+          ? "border-surf/40 bg-navy/20 shadow-md shadow-surf/5"
+          : "hover:border-card-border-bright"
+      } ${isVoided ? "opacity-50" : ""}`}
+    >
+      <div className="flex items-start justify-between mb-1.5">
+        <div>
+          <p className="text-sm font-semibold text-white">Dive #{diveId.toString()}</p>
+          <p className="text-[11px] text-text-tertiary flex items-center gap-1 mt-0.5">
+            <Clock className="w-3 h-3" /> {formatDate(d.diveDate as bigint)}
+          </p>
+        </div>
+        {attCount > 0 ? (
+          <span className="flex items-center gap-0.5 text-[10px] text-kelp bg-kelp/10 px-1.5 py-0.5 rounded-full border border-kelp/20">
+            <ShieldCheck className="w-3 h-3" />
+          </span>
+        ) : (
+          <span className="flex items-center gap-0.5 text-[10px] text-text-tertiary">
+            <Clock className="w-3 h-3" />
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 text-xs">
+        <span className="text-white font-medium">
+          {String(data?.maxDepth ?? 0)}{depthUnit}
+        </span>
+        <span className="text-text-tertiary">
+          {String(data?.bottomTimeMinutes ?? 0)}min
+        </span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-navy/40 text-text-tertiary border border-card-border">
+          {DIVE_MODE_LABELS[Number(data?.mode) as DiveMode] ?? "Unknown"}
+        </span>
+      </div>
+
+      {Boolean(env?.location) && (
+        <p className="text-[11px] text-text-tertiary mt-1.5 truncate flex items-center gap-1">
+          <MapPin className="w-3 h-3" /> {String(env.location)}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 mt-1.5">
+        <Loader2 className="w-3 h-3 text-teal animate-spin opacity-0" />
+        {isVoided && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-danger/10 text-danger border border-danger/20 ml-auto">
+            VOIDED
+          </span>
+        )}
+      </div>
+    </button>
   );
 }
