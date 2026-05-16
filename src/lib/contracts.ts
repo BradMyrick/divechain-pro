@@ -2,9 +2,9 @@ import SovereignDiveLogArtifact from "../contracts/SovereignDiveLog.json";
 
 export const SOVEREIGN_DIVE_LOG_ABI = SovereignDiveLogArtifact.abi;
 export const SOVEREIGN_DIVE_LOG_BYTECODE =
-  SovereignDiveLogArtifact.bytecode as `0x${string}`;
+  SovereignDiveLogArtifact.bytecode.object as `0x${string}`;
 export const SOVEREIGN_DIVE_LOG_DEPLOYED_BYTECODE =
-  SovereignDiveLogArtifact.deployedBytecode as `0x${string}`;
+  SovereignDiveLogArtifact.deployedBytecode.object as `0x${string}`;
 
 export const UnitSystem = {
   Imperial: 0,
@@ -28,12 +28,15 @@ export const BreathingGas = {
 } as const;
 export type BreathingGas = (typeof BreathingGas)[keyof typeof BreathingGas];
 
-export const BiologicalSex = {
-  Male: 0,
-  Female: 1,
-  Unspecified: 2,
+export const BottomType = {
+  Sand: 0,
+  Coral: 1,
+  Rock: 2,
+  Wreck: 3,
+  Silt: 4,
+  Other: 5,
 } as const;
-export type BiologicalSex = (typeof BiologicalSex)[keyof typeof BiologicalSex];
+export type BottomType = (typeof BottomType)[keyof typeof BottomType];
 
 export const DivePurpose = {
   Training: 0,
@@ -91,10 +94,13 @@ export const BREATHING_GAS_LABELS: Record<number, string> = {
   [BreathingGas.Mixed]: "Mixed",
 };
 
-export const BIOLOGICAL_SEX_LABELS: Record<number, string> = {
-  [BiologicalSex.Male]: "Male",
-  [BiologicalSex.Female]: "Female",
-  [BiologicalSex.Unspecified]: "Unspecified",
+export const BOTTOM_TYPE_LABELS: Record<number, string> = {
+  [BottomType.Sand]: "Sand",
+  [BottomType.Coral]: "Coral",
+  [BottomType.Rock]: "Rock",
+  [BottomType.Wreck]: "Wreck",
+  [BottomType.Silt]: "Silt",
+  [BottomType.Other]: "Other",
 };
 
 export const DIVE_PURPOSE_LABELS: Record<number, string> = {

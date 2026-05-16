@@ -9,12 +9,14 @@ import {
   SuitType,
   BreathingGas,
   DecompressionType,
+  BottomType,
   UNIT_SYSTEM_LABELS,
   DIVE_MODE_LABELS,
   DIVE_PURPOSE_LABELS,
   SUIT_TYPE_LABELS,
   BREATHING_GAS_LABELS,
   DECOMP_TYPE_LABELS,
+  BOTTOM_TYPE_LABELS,
 } from "../lib/contracts";
 import { BookOpen, CheckCircle } from "lucide-react";
 
@@ -34,8 +36,10 @@ export default function LogDive() {
   const [location, setLocation] = useState("");
   const [waterTemp, setWaterTemp] = useState(20);
   const [airTemp, setAirTemp] = useState(25);
-  const [bottomType, setBottomType] = useState("");
+  const [bottomType, setBottomType] = useState<BottomType>(BottomType.Sand);
   const [weatherConditions, setWeatherConditions] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
   const [decompType, setDecompType] = useState<DecompressionType>(DecompressionType.NoneDecomp);
   const [totalDecompTime, setTotalDecompTime] = useState(0);
   const [gasType, setGasType] = useState<BreathingGas>(BreathingGas.Air);
@@ -67,8 +71,12 @@ export default function LogDive() {
         airTemp,
         waterTemp,
         currentKnots: 0,
-        location,
         bottomType,
+        coords: {
+          latitude: latitude ? Math.round(parseFloat(latitude) * 1e6) : 0,
+          longitude: longitude ? Math.round(parseFloat(longitude) * 1e6) : 0,
+        },
+        location,
         weatherConditions,
       },
       decomp: {
@@ -119,7 +127,7 @@ export default function LogDive() {
         <div className="glass-card p-6 space-y-4">
           <div className="section-title">Basic Info</div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Dive Date</label>
               <input type="date" value={diveDate} onChange={(e) => setDiveDate(e.target.value)} required />
@@ -134,7 +142,7 @@ export default function LogDive() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Mode</label>
               <select value={mode} onChange={(e) => setMode(Number(e.target.value) as DiveMode)}>
@@ -157,7 +165,7 @@ export default function LogDive() {
         <div className="glass-card p-6 space-y-4">
           <div className="section-title">Dive Data</div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">
                 Max Depth ({units === UnitSystem.Metric ? "m" : "ft"})
@@ -194,7 +202,7 @@ export default function LogDive() {
             <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Great Barrier Reef, Australia" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">
                 Water Temp ({units === UnitSystem.Metric ? "\u00B0C" : "\u00B0F"})
@@ -209,14 +217,29 @@ export default function LogDive() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Bottom Type</label>
-              <input type="text" value={bottomType} onChange={(e) => setBottomType(e.target.value)} placeholder="Sand, Coral, Rock..." />
+              <select value={bottomType} onChange={(e) => setBottomType(Number(e.target.value) as BottomType)}>
+                {Object.entries(BOTTOM_TYPE_LABELS).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Weather</label>
               <input type="text" value={weatherConditions} onChange={(e) => setWeatherConditions(e.target.value)} placeholder="Clear, Overcast..." />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Latitude</label>
+              <input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="e.g. 36.888" />
+            </div>
+            <div>
+              <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Longitude</label>
+              <input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="e.g. -76.332" />
             </div>
           </div>
         </div>
@@ -224,7 +247,7 @@ export default function LogDive() {
         <div className="glass-card p-6 space-y-4">
           <div className="section-title">Gas & Decompression</div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Breathing Gas</label>
               <select value={gasType} onChange={(e) => setGasType(Number(e.target.value) as BreathingGas)}>
@@ -243,7 +266,7 @@ export default function LogDive() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">O2 %</label>
               <input type="number" value={o2Percent} onChange={(e) => setO2Percent(Number(e.target.value))} min={0} max={100} />
