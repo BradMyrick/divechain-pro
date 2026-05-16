@@ -22,10 +22,10 @@ import {
 export default function Logbook() {
   const navigate = useNavigate();
   const { hasContract, contractAddress } = useDiveContract();
-  const { diveCount, allDiveIds, isOwner, profile } = useDiveLog(contractAddress);
+  const { diveCount, allDiveIds, isOwner } = useDiveLog(contractAddress);
   const [selectedDiveId, setSelectedDiveId] = useState<bigint | null>(null);
 
-  const diverName = profile ? String((profile as Record<string, unknown>)?.name ?? "Diver") : "Diver";
+  const diverName = "Diver";
 
   if (!hasContract) {
     return (

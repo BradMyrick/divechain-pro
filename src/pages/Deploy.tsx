@@ -1,14 +1,10 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount, useDeployContract, useWaitForTransactionReceipt, useTransactionReceipt } from "wagmi";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import {
   SOVEREIGN_DIVE_LOG_ABI,
   SOVEREIGN_DIVE_LOG_BYTECODE,
-  BiologicalSex,
-  UnitSystem,
-  BIOLOGICAL_SEX_LABELS,
-  UNIT_SYSTEM_LABELS,
 } from "../lib/contracts";
 
 export default function Deploy() {
@@ -16,12 +12,6 @@ export default function Deploy() {
   const navigate = useNavigate();
   const { hasContract, setContract, contractAddress } = useDiveContract();
 
-  const [name, setName] = useState("");
-  const [age, setAge] = useState(30);
-  const [height, setHeight] = useState(180);
-  const [weight, setWeight] = useState(80);
-  const [sex, setSex] = useState<BiologicalSex>(BiologicalSex.Unspecified);
-  const [units, setUnits] = useState<UnitSystem>(UnitSystem.Metric);
 
   const { deployContract, data: txHash, isPending, error } = useDeployContract();
 
@@ -68,72 +58,7 @@ export default function Deploy() {
       </div>
 
       <div className="glass-card p-6 space-y-5">
-        <div className="section-title">Diver Information</div>
 
-        <div>
-          <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Full Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter your name"
-            required
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Age</label>
-            <input
-              type="number"
-              value={age}
-              onChange={(e) => setAge(Number(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">
-              Height ({units === UnitSystem.Metric ? "cm" : "in"})
-            </label>
-            <input
-              type="number"
-              value={height}
-              onChange={(e) => setHeight(Number(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">
-              Weight ({units === UnitSystem.Metric ? "kg" : "lbs"})
-            </label>
-            <input
-              type="number"
-              value={weight}
-              onChange={(e) => setWeight(Number(e.target.value))}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Unit System</label>
-            <select
-              value={units}
-              onChange={(e) => setUnits(Number(e.target.value) as UnitSystem)}
-            >
-              {Object.entries(UNIT_SYSTEM_LABELS).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs text-bismuth mb-1.5 font-medium uppercase tracking-wider">Biological Sex</label>
-          <select
-            value={sex}
-            onChange={(e) => setSex(Number(e.target.value) as BiologicalSex)}
-          >
-            {Object.entries(BIOLOGICAL_SEX_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
-          </select>
-        </div>
 
         <div className="pt-2">
           <button
@@ -142,10 +67,10 @@ export default function Deploy() {
               deployContract({
                 abi: SOVEREIGN_DIVE_LOG_ABI,
                 bytecode: SOVEREIGN_DIVE_LOG_BYTECODE,
-                args: [address, name, age, height, weight, sex, units],
+                args: [address],
               });
             }}
-            disabled={isPending || isConfirming || !name}
+            disabled={isPending || isConfirming}
             className="btn-primary w-full text-center"
           >
             {isPending ? "Confirm in Wallet..." : isConfirming ? "Deploying to Avalanche..." : "Deploy My Dive Log"}

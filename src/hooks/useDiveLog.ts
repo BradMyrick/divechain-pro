@@ -22,7 +22,7 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
     });
 
   const { data: diveCount } = useRead("diveCount");
-  const { data: profile } = useRead("profile");
+
   const { data: owner } = useRead("owner");
   const { data: allDiveIds } = useRead("getAllDiveIds");
 
@@ -79,22 +79,7 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
     });
   };
 
-  const updateProfile = (
-    _name: string,
-    _age: number,
-    _height: number,
-    _weight: number,
-    _sex: number,
-    _units: number,
-  ) => {
-    if (!contractAddress) return;
-    writeContract({
-      address: contractAddress,
-      abi: SOVEREIGN_DIVE_LOG_ABI,
-      functionName: "updateProfile",
-      args: [_name, _age, _height, _weight, _sex, _units],
-    });
-  };
+
 
   const voidDive = (diveId: bigint, supersededById: bigint, reason: string) => {
     if (!contractAddress) return;
@@ -110,7 +95,7 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
 
   return {
     diveCount: diveCount as bigint | undefined,
-    profile,
+
     owner: owner as `0x${string}` | undefined,
     allDiveIds: allDiveIds as bigint[] | undefined,
     isOwner: !!isOwner,
@@ -118,7 +103,7 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
     useVoidInfo,
     useAttestations,
     logDive,
-    updateProfile,
+
     voidDive,
     txHash,
     isPending,

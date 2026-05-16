@@ -6,7 +6,6 @@ import { useState } from "react";
 import {
   BookOpen,
   PenSquare,
-  User,
   Globe,
   Wrench,
   Users,
@@ -34,7 +33,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/logbook", label: "Logbook", icon: BookOpen, needsContract: true },
       { path: "/log-dive", label: "Log Dive", icon: PenSquare, needsContract: true },
-      { path: "/profile", label: "Profile", icon: User, needsContract: false },
     ],
   },
   {

@@ -15,6 +15,8 @@ import {
   SuitType,
   BreathingGas,
   DecompressionType,
+  BottomType,
+  BOTTOM_TYPE_LABELS,
 } from "../lib/contracts";
 import {
   ArrowLeft,
@@ -33,6 +35,7 @@ import {
   Cylinder,
   Waves,
   Activity,
+  Compass,
 } from "lucide-react";
 import {
   AreaChart,
@@ -322,12 +325,12 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
                 <p className="text-lg font-bold text-white mt-1">{String(env.airTemp)}{tempUnit}</p>
               </div>
             )}
-            {env && String(env.bottomType ?? "") && (
+            {env && env.bottomType !== undefined && (
               <div className="glass-card-inner p-3">
                 <p className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1">
                   <Eye className="w-3 h-3" /> Bottom Type
                 </p>
-                <p className="text-sm font-medium text-white mt-1">{String(env.bottomType)}</p>
+                <p className="text-sm font-medium text-white mt-1">{BOTTOM_TYPE_LABELS[Number(env.bottomType) as BottomType] ?? "Unknown"}</p>
               </div>
             )}
             {env && String(env.weatherConditions ?? "") && (
@@ -336,6 +339,16 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
                   <Cloud className="w-3 h-3" /> Weather
                 </p>
                 <p className="text-sm font-medium text-white mt-1">{String(env.weatherConditions)}</p>
+              </div>
+            )}
+            {env && Boolean(env.coords) && (
+              <div className="glass-card-inner p-3 col-span-1 sm:col-span-2">
+                <p className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1">
+                  <Compass className="w-3 h-3" /> GPS Coordinates
+                </p>
+                <p className="text-sm font-medium text-white mt-1 font-mono">
+                  {(Number((env.coords as any).latitude) / 1e6).toFixed(6)}, {(Number((env.coords as any).longitude) / 1e6).toFixed(6)}
+                </p>
               </div>
             )}
           </div>
