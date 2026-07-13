@@ -2,9 +2,12 @@ import SovereignDiveLogArtifact from "../contracts/SovereignDiveLog.json";
 
 export const SOVEREIGN_DIVE_LOG_ABI = SovereignDiveLogArtifact.abi;
 export const SOVEREIGN_DIVE_LOG_BYTECODE =
-  SovereignDiveLogArtifact.bytecode.object as `0x${string}`;
+  SovereignDiveLogArtifact.bytecode as `0x${string}`;
 export const SOVEREIGN_DIVE_LOG_DEPLOYED_BYTECODE =
-  SovereignDiveLogArtifact.deployedBytecode.object as `0x${string}`;
+  SovereignDiveLogArtifact.deployedBytecode as `0x${string}`;
+
+/** ERC-165 interface id for IDiveLog (compiler-computed type(IDiveLog).interfaceId). */
+export const IDIVELOG_INTERFACE_ID = "0x321ef561";
 
 export const UnitSystem = {
   Imperial: 0,
@@ -27,16 +30,6 @@ export const BreathingGas = {
   Mixed: 5,
 } as const;
 export type BreathingGas = (typeof BreathingGas)[keyof typeof BreathingGas];
-
-export const BottomType = {
-  Sand: 0,
-  Coral: 1,
-  Rock: 2,
-  Wreck: 3,
-  Silt: 4,
-  Other: 5,
-} as const;
-export type BottomType = (typeof BottomType)[keyof typeof BottomType];
 
 export const DivePurpose = {
   Training: 0,
@@ -62,6 +55,16 @@ export const SuitType = {
   Swim: 3,
 } as const;
 export type SuitType = (typeof SuitType)[keyof typeof SuitType];
+
+export const BottomType = {
+  Sand: 0,
+  Coral: 1,
+  Rock: 2,
+  Wreck: 3,
+  Silt: 4,
+  Other: 5,
+} as const;
+export type BottomType = (typeof BottomType)[keyof typeof BottomType];
 
 export const DecompressionType = {
   NoneDecomp: 0,
@@ -94,15 +97,6 @@ export const BREATHING_GAS_LABELS: Record<number, string> = {
   [BreathingGas.Mixed]: "Mixed",
 };
 
-export const BOTTOM_TYPE_LABELS: Record<number, string> = {
-  [BottomType.Sand]: "Sand",
-  [BottomType.Coral]: "Coral",
-  [BottomType.Rock]: "Rock",
-  [BottomType.Wreck]: "Wreck",
-  [BottomType.Silt]: "Silt",
-  [BottomType.Other]: "Other",
-};
-
 export const DIVE_PURPOSE_LABELS: Record<number, string> = {
   [DivePurpose.Training]: "Training",
   [DivePurpose.Inspection]: "Inspection",
@@ -126,6 +120,15 @@ export const SUIT_TYPE_LABELS: Record<number, string> = {
   [SuitType.Swim]: "Swim",
 };
 
+export const BOTTOM_TYPE_LABELS: Record<number, string> = {
+  [BottomType.Sand]: "Sand",
+  [BottomType.Coral]: "Coral",
+  [BottomType.Rock]: "Rock",
+  [BottomType.Wreck]: "Wreck",
+  [BottomType.Silt]: "Silt",
+  [BottomType.Other]: "Other",
+};
+
 export const DECOMP_TYPE_LABELS: Record<number, string> = {
   [DecompressionType.NoneDecomp]: "None",
   [DecompressionType.Standard]: "Standard",
@@ -135,3 +138,14 @@ export const DECOMP_TYPE_LABELS: Record<number, string> = {
   [DecompressionType.Repetitive]: "Repetitive",
   [DecompressionType.ExceptionalExposure]: "Exceptional Exposure",
 };
+
+/** Depth/temperature unit suffix helpers driven by a dive's UnitSystem. */
+export function depthUnit(units: UnitSystem | number): string {
+  return UNIT_SYSTEM_LABELS[units] === "Metric" ? "m" : "ft";
+}
+export function pressureUnit(units: UnitSystem | number): string {
+  return UNIT_SYSTEM_LABELS[units] === "Metric" ? "bar" : "psi";
+}
+export function tempUnit(units: UnitSystem | number): string {
+  return UNIT_SYSTEM_LABELS[units] === "Metric" ? "\u00B0C" : "\u00B0F";
+}

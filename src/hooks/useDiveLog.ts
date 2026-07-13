@@ -4,15 +4,13 @@ import {
   useWaitForTransactionReceipt,
   useAccount,
 } from "wagmi";
-import { SOVEREIGN_DIVE_LOG_ABI, UnitSystem } from "../lib/contracts";
+import { SOVEREIGN_DIVE_LOG_ABI } from "../lib/contracts";
+import type { DiveInput } from "../lib/types";
 
 export function useDiveLog(contractAddress: `0x${string}` | undefined) {
   const { address } = useAccount();
 
-  const useRead = (
-    functionName: string,
-    args?: unknown[],
-  ) =>
+  const useRead = (functionName: string, args?: unknown[]) =>
     useReadContract({
       address: contractAddress,
       abi: SOVEREIGN_DIVE_LOG_ABI,
@@ -22,7 +20,6 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
     });
 
   const { data: diveCount } = useRead("diveCount");
-
   const { data: owner } = useRead("owner");
   const { data: allDiveIds } = useRead("getAllDiveIds");
 
@@ -53,23 +50,22 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
       query: { enabled: !!contractAddress && diveId > 0n },
     });
 
-  const { writeContract, data: txHash, isPending, error } = useWriteContract();
+  const useAttesterNonce = (attester: `0x${string}` | undefined) =>
+    useReadContract({
+      address: contractAddress,
+      abi: SOVEREIGN_DIVE_LOG_ABI,
+      functionName: "attesterNonce",
+      args: [attester],
+      query: { enabled: !!contractAddress && !!attester },
+    });
+
+  const { writeContract, data: txHash, isPending, error, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
-  const logDive = (
-    input: {
-      diveDate: bigint;
-      units: UnitSystem;
-      data: Record<string, unknown>;
-      env: Record<string, unknown>;
-      decomp: Record<string, unknown>;
-      gas: Record<string, unknown>;
-      remarks: string;
-    },
-  ) => {
+  const logDive = (input: DiveInput) => {
     if (!contractAddress) return;
     writeContract({
       address: contractAddress,
@@ -79,7 +75,15 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
     });
   };
 
-
+  const batchLogDives = (inputs: DiveInput[]) => {
+    if (!contractAddress || inputs.length === 0) return;
+    writeContract({
+      address: contractAddress,
+      abi: SOVEREIGN_DIVE_LOG_ABI,
+      functionName: "batchLogDives",
+      args: [inputs],
+    });
+  };
 
   const voidDive = (diveId: bigint, supersededById: bigint, reason: string) => {
     if (!contractAddress) return;
@@ -91,24 +95,38 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
     });
   };
 
-  const isOwner = address && owner && address.toLowerCase() === (owner as string).toLowerCase();
+  /** Relay an EIP-712 attestation. Any account may submit; attester is recovered from the signature. */
+  const attestDive = (diveId: bigint, nonce: bigint, signature: `0x${string}`) => {
+    if (!contractAddress) return;
+    writeContract({
+      address: contractAddress,
+      abi: SOVEREIGN_DIVE_LOG_ABI,
+      functionName: "attestDive",
+      args: [diveId, nonce, signature],
+    });
+  };
+
+  const isOwner =
+    !!address && !!owner && address.toLowerCase() === (owner as string).toLowerCase();
 
   return {
     diveCount: diveCount as bigint | undefined,
-
     owner: owner as `0x${string}` | undefined,
     allDiveIds: allDiveIds as bigint[] | undefined,
     isOwner: !!isOwner,
     useDive,
     useVoidInfo,
     useAttestations,
+    useAttesterNonce,
     logDive,
-
+    batchLogDives,
     voidDive,
+    attestDive,
     txHash,
     isPending,
     isConfirming,
     isSuccess,
     error,
+    reset,
   };
 }
