@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import DiveSites from "./pages/DiveSites";
 import DiveTools from "./pages/DiveTools";
 import Community from "./pages/Community";
+import Attest from "./pages/Attest";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/logbook" element={<Logbook />} />
         <Route path="/logbook/:id" element={<DiveDetail />} />
         <Route path="/log-dive" element={<LogDive />} />
+        <Route path="/attest" element={<Attest />} />
         <Route path="/dive-sites" element={<DiveSites />} />
         <Route path="/tools" element={<DiveTools />} />
         <Route path="/community" element={<Community />} />

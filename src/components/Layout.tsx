@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   BookOpen,
   PenSquare,
-  User,
+  FileCode2,
   Globe,
   Wrench,
   Users,
@@ -34,7 +34,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/logbook", label: "Logbook", icon: BookOpen, needsContract: true },
       { path: "/log-dive", label: "Log Dive", icon: PenSquare, needsContract: true },
-      { path: "/profile", label: "Profile", icon: User, needsContract: false },
+      { path: "/profile", label: "Contract", icon: FileCode2, needsContract: false },
     ],
   },
   {
@@ -62,7 +62,8 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex relative">
-      <div className="bubble-bg" />
+      <div className="aurora-bg" />
+      <div className="grid-overlay" />
 
       {/* Desktop Sidebar */}
       {isConnected && (
