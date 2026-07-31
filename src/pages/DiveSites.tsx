@@ -258,7 +258,7 @@ export default function DiveSites() {
   const ratingStars = (r: number) => "★".repeat(r) + "☆".repeat(5 - r);
 
   return (
-    <div className="-mx-4 sm:-mx-6 lg:-mx-8 -my-4 sm:-my-6 lg:-my-8 h-[calc(100dvh-2rem)] lg:h-[calc(100vh-2rem)] flex flex-col">
+    <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-1 -mb-4 sm:-mt-2 sm:-mb-6 lg:-mt-4 lg:-mb-8 flex flex-col flex-1">
       <div className="absolute bottom-20 left-4 right-4 lg:right-8 z-[1000] pointer-events-none">
         <div className="flex flex-col items-end gap-2">
           {selectedSite && (

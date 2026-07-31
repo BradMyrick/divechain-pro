@@ -61,7 +61,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen min-h-dvh flex flex-col relative">
+    <div className="min-h-screen flex flex-col relative">
       <div className="aurora-bg" />
       <div className="grid-overlay" />
 
@@ -198,8 +198,8 @@ export default function Layout() {
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 min-w-0 relative z-10 ${isConnected ? "pb-20 lg:pb-0" : ""}`}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <main className={`flex-1 min-w-0 relative z-10 flex flex-col ${isConnected ? "pb-20 lg:pb-0" : ""}`}>
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
           <Outlet />
         </div>
       </main>
