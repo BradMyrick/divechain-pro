@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { useAccount } from "wagmi";
 
-const STORAGE_KEY = "divechain_contracts";
-const OLD_KEY = "divechain_contract";
+const STORAGE_KEY = "divechain_contracts_v2";
+const OLD_KEY = "divechain_contracts";
+const LEGACY_KEY = "divechain_contract";
 
 type ContractRegistry = Record<string, string>;
 
@@ -12,6 +13,7 @@ interface DiveContractState {
   setContract: (addr: string) => void;
   clearContract: () => void;
   walletKey: string;
+  chainId: number | undefined;
 }
 
 const DiveContractContext = createContext<DiveContractState>({
@@ -20,6 +22,7 @@ const DiveContractContext = createContext<DiveContractState>({
   setContract: () => {},
   clearContract: () => {},
   walletKey: "",
+  chainId: undefined,
 });
 
 function loadRegistry(): ContractRegistry {
@@ -35,65 +38,122 @@ function saveRegistry(registry: ContractRegistry) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(registry));
 }
 
-function getOldContract(): string | null {
-  const old = window.localStorage.getItem(OLD_KEY);
-  if (!old) return null;
+function scopeKey(walletKey: string, chainId: number): string {
+  return `${walletKey}:${chainId}`;
+}
+
+function migrateOldFormat(existing: ContractRegistry): ContractRegistry {
+  const registry = { ...existing };
+
   try {
-    const parsed = JSON.parse(old);
-    if (typeof parsed === "string" && parsed.startsWith("0x") && parsed.length === 42) return parsed;
-  } catch {
-    if (old.startsWith("0x") && old.length === 42) return old;
+    const old = window.localStorage.getItem(OLD_KEY);
+    if (old) {
+      const parsed = JSON.parse(old) as Record<string, string>;
+      let migrated = false;
+      for (const [walletKey, addr] of Object.entries(parsed)) {
+        if (addr.startsWith("0x") && addr.length === 42) {
+          const scoped = `${walletKey}:43113`;
+          if (!registry[scoped]) {
+            registry[scoped] = addr;
+            migrated = true;
+          }
+        }
+      }
+      if (migrated) window.localStorage.removeItem(OLD_KEY);
+    }
+  } catch { /* ignore */ }
+
+  try {
+    const legacy = window.localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const addr = legacy.startsWith("0x") && legacy.length === 42 ? legacy : null;
+      if (addr) {
+        const keys = Object.keys(registry);
+        const needsMigration = !keys.some((k) => registry[k] === addr);
+        if (needsMigration) {
+          registry[`legacy:43113`] = addr;
+        }
+      }
+      window.localStorage.removeItem(LEGACY_KEY);
+    }
+  } catch { /* ignore */ }
+
+  if (Object.keys(registry).length > 0) {
+    saveRegistry(registry);
   }
-  return null;
+  return registry;
 }
 
 export function DiveContractProvider({ children }: { children: ReactNode }) {
-  const { address } = useAccount();
-  const [registry, setRegistry] = useState<ContractRegistry>(loadRegistry);
+  const { address, chainId } = useAccount();
+  const [registry, setRegistry] = useState<ContractRegistry>(() => {
+    const existing = loadRegistry();
+    return migrateOldFormat(existing);
+  });
+
+  const [didMigrate, setDidMigrate] = useState(false);
+  if (!didMigrate && address && chainId) {
+    const existing = loadRegistry();
+    const updated = migrateOldFormat(existing);
+    if (Object.keys(updated).length > 0) {
+      saveRegistry(updated);
+      setRegistry(updated);
+    }
+    setDidMigrate(true);
+  }
 
   const walletKey = address ? address.toLowerCase() : "";
-  const contractAddress = (walletKey && registry[walletKey]) || "";
+  const scopedKey = walletKey && chainId ? scopeKey(walletKey, chainId) : "";
 
-  if (walletKey && !registry[walletKey]) {
-    const oldAddr = getOldContract();
-    if (oldAddr) {
-      const next = { ...registry, [walletKey]: oldAddr };
+  // Bind legacy contract to current wallet on Fuji (do this during render, not in effect)
+  if (walletKey && chainId) {
+    const scoped = scopeKey(walletKey, chainId);
+    const legacyKey = `legacy:${chainId}`;
+    const legacyAddr = registry[legacyKey];
+    if (legacyAddr && !registry[scoped]) {
+      const next = { ...registry, [scoped]: legacyAddr };
       saveRegistry(next);
       setRegistry(next);
-      window.localStorage.removeItem(OLD_KEY);
     }
   }
 
+  const contractAddress: string | undefined = scopedKey ? registry[scopedKey] : undefined;
+
   const setContract = useCallback(
     (addr: string) => {
-      if (!walletKey) return;
+      if (!walletKey || !chainId) return;
+      const key = scopeKey(walletKey, chainId);
       setRegistry((prev) => {
-        const next = { ...prev, [walletKey]: addr };
+        const next = { ...prev, [key]: addr };
         saveRegistry(next);
         return next;
       });
     },
-    [walletKey],
+    [walletKey, chainId],
   );
 
   const clearContract = useCallback(() => {
-    if (!walletKey) return;
+    if (!walletKey || !chainId) return;
+    const key = scopeKey(walletKey, chainId);
     setRegistry((prev) => {
       const next = { ...prev };
-      delete next[walletKey];
+      delete next[key];
       saveRegistry(next);
       return next;
     });
-  }, [walletKey]);
+  }, [walletKey, chainId]);
+
+  const hasContract = !!contractAddress;
 
   return (
     <DiveContractContext.Provider
       value={{
         contractAddress: (contractAddress || undefined) as `0x${string}` | undefined,
-        hasContract: !!contractAddress,
+        hasContract,
         setContract,
         clearContract,
         walletKey,
+        chainId,
       }}
     >
       {children}
