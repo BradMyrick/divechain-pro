@@ -61,7 +61,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex relative">
+    <div className="min-h-screen min-h-dvh flex flex-col relative">
       <div className="aurora-bg" />
       <div className="grid-overlay" />
 
@@ -118,9 +118,9 @@ export default function Layout() {
         </aside>
       )}
 
-      {/* Mobile Header */}
+      {/* Mobile Header (connected) */}
       {isConnected && (
-        <header className="lg:hidden fixed top-0 left-0 right-0 bg-card/95 backdrop-blur-md border-b border-card-border z-50">
+        <header className="lg:hidden sticky top-0 left-0 right-0 bg-card/95 backdrop-blur-md border-b border-card-border z-50 pt-safe">
           <div className="px-4 py-3 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 no-underline">
               <div className="w-8 h-8 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
@@ -134,7 +134,8 @@ export default function Layout() {
               <ConnectButton accountStatus="avatar" showBalance={false} chainStatus="icon" />
               <button
                 onClick={() => setMobileMenu(!mobileMenu)}
-                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5"
+                className="p-2.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label={mobileMenu ? "Close menu" : "Open menu"}
               >
                 {mobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -142,7 +143,7 @@ export default function Layout() {
           </div>
 
           {mobileMenu && (
-            <div className="border-t border-card-border bg-deep/95 backdrop-blur-md px-4 py-3 space-y-3">
+            <div className="border-t border-card-border bg-deep/95 backdrop-blur-md px-4 py-3 space-y-4 animate-fade-in">
               {NAV_GROUPS.map((group) => (
                 <div key={group.label}>
                   <p className="text-[10px] uppercase tracking-widest text-text-tertiary mb-2">{group.label}</p>
@@ -157,8 +158,8 @@ export default function Layout() {
                             if (disabled) e.preventDefault();
                             else setMobileMenu(false);
                           }}
-                          className={`flex flex-col items-center gap-1 p-2 rounded-lg no-underline transition-all ${
-                            isActive(item.path) ? "bg-steel/20 text-surf" : disabled ? "text-text-tertiary" : "text-gray-400"
+                          className={`mobile-nav-item ${
+                            isActive(item.path) ? "text-surf" : disabled ? "text-text-tertiary" : "text-gray-400"
                           }`}
                         >
                           <item.icon className="w-5 h-5" />
@@ -176,7 +177,7 @@ export default function Layout() {
 
       {/* Disconnected Header */}
       {!isConnected && (
-        <header className="border-b border-card-border bg-glass backdrop-blur-md sticky top-0 z-50">
+        <header className="sticky top-0 z-50 border-b border-card-border/50 bg-abyss/80 backdrop-blur-xl pt-safe">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             <Link to="/" className="flex items-center gap-2.5 no-underline shrink-0">
               <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
@@ -186,7 +187,7 @@ export default function Layout() {
                 <span className="text-lg font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent leading-tight">
                   Divechain
                 </span>
-                <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none hidden sm:block">
                   Sovereign Dive Log
                 </span>
               </div>
@@ -197,16 +198,16 @@ export default function Layout() {
       )}
 
       {/* Main Content */}
-      <main className={`flex-1 min-w-0 relative z-10 ${isConnected ? "lg:pt-0 pt-14" : ""}`}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 pb-24 lg:pb-8">
+      <main className={`flex-1 min-w-0 relative z-10 ${isConnected ? "pb-20 lg:pb-0" : ""}`}>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           <Outlet />
         </div>
       </main>
 
       {/* Mobile Bottom Nav */}
       {isConnected && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-card-border-bright z-50">
-          <div className="flex justify-around py-2">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-card-border-bright z-50 pb-safe">
+          <div className="flex justify-around py-1.5">
             {ALL_ITEMS.slice(0, 5).map((item) => {
               const disabled = item.needsContract && !hasContract;
               return (
@@ -214,7 +215,7 @@ export default function Layout() {
                   key={item.path}
                   to={disabled ? "#" : item.path}
                   onClick={(e) => { if (disabled) e.preventDefault(); }}
-                  className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg no-underline transition-colors ${
+                  className={`mobile-nav-item ${
                     isActive(item.path)
                       ? "text-surf"
                       : disabled
@@ -223,7 +224,7 @@ export default function Layout() {
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
-                  <span className="text-[9px]">{item.label}</span>
+                  <span className="nav-label">{item.label}</span>
                 </Link>
               );
             })}

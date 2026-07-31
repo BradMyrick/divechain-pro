@@ -18,10 +18,16 @@ createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           theme={darkTheme({
-            accentColor: "#0d9488",
-            accentColorForeground: "white",
-            overlayBlur: "small",
+            accentColor: "#22d3ee",
+            accentColorForeground: "#02070d",
+            overlayBlur: "large",
+            borderRadius: "medium",
+            fontStack: "system",
           })}
+          appInfo={{
+            appName: "Divechain",
+            learnMoreUrl: "https://github.com/anomalyco/divechain-pro",
+          }}
         >
           <BrowserRouter>
             <DiveContractProvider>
