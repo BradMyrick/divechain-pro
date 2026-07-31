@@ -1,257 +1,460 @@
-import { useState } from "react";
-import { Globe, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import {
+  Anchor, Building2, Waves, Thermometer, Eye, Calendar,
+  Gauge, Globe, Search, ExternalLink,
+} from "lucide-react";
 
-interface DiveRegion {
+const SITE_ICON = L.divIcon({
+  html: `<div style="width:24px;height:24px;border-radius:50%;background:rgba(34,211,238,0.9);border:3px solid #0d9488;box-shadow:0 0 16px rgba(34,211,238,0.6);display:flex;align-items:center;justify-content:center;font-size:10px">&#x2B07;</div>`,
+  className: "",
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+  popupAnchor: [0, -28],
+});
+
+const SHOP_ICON = L.divIcon({
+  html: `<div style="width:28px;height:28px;border-radius:6px;background:#0d9488;border:2px solid #22d3ee;box-shadow:0 0 12px rgba(13,148,136,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">&#x2693;</div>`,
+  className: "",
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+  popupAnchor: [0, -28],
+});
+
+interface DiveSite {
   id: string;
   name: string;
-  x: number;
-  y: number;
-  temp: string;
-  visibility: string;
-  bestSeason: string;
-  topSites: string[];
+  lat: number;
+  lng: number;
+  region: string;
   description: string;
+  depthRange: string;
+  difficulty: "Beginner" | "Intermediate" | "Advanced" | "Technical";
+  conditions: string;
+  visibility: string;
+  temp: string;
+  bestSeason: string;
+  rating: number;
 }
 
-const REGIONS: DiveRegion[] = [
+interface DiveShop {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  region: string;
+  address: string;
+  website: string;
+  services: string[];
+}
+
+const DIVE_SITES: DiveSite[] = [
   {
-    id: "caribbean",
-    name: "Caribbean",
-    x: 26, y: 42,
-    temp: "26-29\u00B0C",
-    visibility: "20-40m",
-    bestSeason: "Dec-Apr",
-    topSites: ["Bonaire", "Cozumel", "Grand Cayman", "Belize Blue Hole"],
-    description: "Crystal clear waters, vibrant coral reefs, and warm temperatures year-round.",
+    id: "bonaire", name: "Bonaire Marine Park", lat: 12.15, lng: -68.28, region: "Caribbean",
+    description: "Shore diving paradise with 86 marked sites along the leeward coast. Pristine reefs with easy access from shore.",
+    depthRange: "5-40m", difficulty: "Beginner", conditions: "Calm, mild current", visibility: "20-40m", temp: "26-29°C",
+    bestSeason: "Year-round", rating: 5,
   },
   {
-    id: "indopacific",
-    name: "Indo-Pacific",
-    x: 75, y: 48,
-    temp: "27-30\u00B0C",
-    visibility: "15-40m",
-    bestSeason: "Apr-Nov",
-    topSites: ["Raja Ampat", "Great Barrier Reef", "Bunaken", "Sipadan"],
-    description: "The world's most biodiverse marine region with 3,000+ fish species.",
+    id: "cozumel", name: "Palancar Reef, Cozumel", lat: 20.34, lng: -87.02, region: "Caribbean",
+    description: "Drift diving along towering coral formations and swim-throughs in crystal-clear Yucatan current.",
+    depthRange: "10-40m", difficulty: "Intermediate", conditions: "Moderate drift", visibility: "30-50m", temp: "26-28°C",
+    bestSeason: "Dec-Apr", rating: 5,
   },
   {
-    id: "mediterranean",
-    name: "Mediterranean",
-    x: 52, y: 32,
-    temp: "16-26\u00B0C",
-    visibility: "10-30m",
-    bestSeason: "May-Oct",
-    topSites: ["Blue Hole Malta", "Chios Wreck", "Medes Islands", "Capo Testa"],
-    description: "Historic wreck diving through ancient trade routes and empires.",
+    id: "belize", name: "Great Blue Hole, Belize", lat: 17.31, lng: -87.53, region: "Caribbean",
+    description: "Iconic 300m-wide sinkhole with stalactite formations at 40m. A UNESCO World Heritage Site.",
+    depthRange: "10-40m+", difficulty: "Advanced", conditions: "Still, low light", visibility: "15-30m", temp: "24-27°C",
+    bestSeason: "Mar-Jun", rating: 4,
   },
   {
-    id: "redsea",
-    name: "Red Sea",
-    x: 56, y: 40,
-    temp: "22-28\u00B0C",
-    visibility: "20-50m",
-    bestSeason: "Mar-Nov",
-    topSites: ["Ras Mohammed", "Thistlegorm", "Brothers Islands", "Daedalus Reef"],
-    description: "Legendary visibility and world-class wall dives along the Sinai.",
+    id: "cayman", name: "Stingray City, Grand Cayman", lat: 19.35, lng: -81.27, region: "Caribbean",
+    description: "Shallow sandbar where Southern stingrays gather. Feed and interact with these gentle giants.",
+    depthRange: "3-5m", difficulty: "Beginner", conditions: "Calm", visibility: "20-30m", temp: "27-29°C",
+    bestSeason: "Year-round", rating: 4,
   },
   {
-    id: "southeast_asia",
-    name: "Southeast Asia",
-    x: 70, y: 48,
-    temp: "27-30\u00B0C",
-    visibility: "10-30m",
-    bestSeason: "Mar-Oct",
-    topSites: ["Similan Islands", "Komodo", "Malapascua", "Anilao"],
-    description: "Thailand, Philippines, and Indonesia offer unmatched variety and value.",
+    id: "raja-ampat", name: "Cape Kri, Raja Ampat", lat: -0.55, lng: 130.68, region: "Indo-Pacific",
+    description: "Holds the record for most fish species on a single dive (374). The heart of the Coral Triangle.",
+    depthRange: "5-40m", difficulty: "Intermediate", conditions: "Variable current", visibility: "15-30m", temp: "27-30°C",
+    bestSeason: "Oct-Apr", rating: 5,
   },
   {
-    id: "galapagos",
-    name: "Gal\u00E1pagos",
-    x: 20, y: 50,
-    temp: "18-26\u00B0C",
-    visibility: "10-25m",
-    bestSeason: "Jun-Nov",
-    topSites: ["Darwin Island", "Wolf Island", "Gordon Rocks", "Cabo Douglas"],
-    description: "Big animal encounters: hammerheads, whale sharks, marine iguanas.",
+    id: "gbr-ribbon", name: "Ribbon Reefs, GBR", lat: -15.4, lng: 145.8, region: "Indo-Pacific",
+    description: "Pristine northern Great Barrier Reef with giant potato cod, maori wrasse, and vibrant coral gardens.",
+    depthRange: "5-30m", difficulty: "Beginner", conditions: "Gentle current", visibility: "15-30m", temp: "24-29°C",
+    bestSeason: "Jun-Nov", rating: 5,
   },
   {
-    id: "mexico_pacific",
-    name: "Mexico Pacific",
-    x: 16, y: 44,
-    temp: "20-28\u00B0C",
-    visibility: "10-30m",
-    bestSeason: "Aug-Mar",
-    topSites: ["Socorro Islands", "Guadalupe", "Cabo Pulmo", "Cenotes"],
-    description: "From great whites to cenote cavern dives in the Yucatan jungle.",
+    id: "bunaken", name: "Lekuan Walls, Bunaken", lat: 1.62, lng: 124.77, region: "Indo-Pacific",
+    description: "Vertical coral walls plunging to 200m with turtles, reef sharks, and spectacular barrel sponges.",
+    depthRange: "5-40m+", difficulty: "Intermediate", conditions: "Can have current", visibility: "20-35m", temp: "27-29°C",
+    bestSeason: "Apr-Nov", rating: 4,
   },
   {
-    id: "south_africa",
-    name: "South Africa",
-    x: 55, y: 68,
-    temp: "16-24\u00B0C",
-    visibility: "5-20m",
-    bestSeason: "May-Sep",
-    topSites: ["Aliwal Shoal", "Sodwana Bay", "Protea Banks", "Cape Town Kelp"],
-    description: "Sardine run, shark encounters, and the otherworldly kelp forests.",
+    id: "sipadan", name: "Barracuda Point, Sipadan", lat: 4.11, lng: 118.63, region: "Indo-Pacific",
+    description: "Famous tornado of barracuda, schooling jacks, and green turtles. Jacques Cousteau's favorite site.",
+    depthRange: "5-40m", difficulty: "Intermediate", conditions: "Strong current", visibility: "20-40m", temp: "27-30°C",
+    bestSeason: "Apr-Dec", rating: 5,
   },
   {
-    id: "micronesia",
-    name: "Micronesia",
-    x: 82, y: 42,
-    temp: "28-30\u00B0C",
-    visibility: "20-50m",
-    bestSeason: "Year-round",
-    topSites: ["Truk Lagoon", "Palau", "Yap", "Pohnpei"],
-    description: "The ultimate wreck diving destination with 60+ WWII shipwrecks.",
+    id: "ras-mohammed", name: "Shark & Yolanda Reef, Ras Mohammed", lat: 27.72, lng: 34.25, region: "Red Sea",
+    description: "Dual reef system at the tip of Sinai with hammerheads, turtles, and the cargo of the wrecked Yolanda.",
+    depthRange: "10-40m+", difficulty: "Intermediate", conditions: "Can be choppy", visibility: "30-50m", temp: "22-28°C",
+    bestSeason: "Jun-Sep", rating: 5,
   },
   {
-    id: "northern_europe",
-    name: "Northern Europe",
-    x: 48, y: 22,
-    temp: "4-16\u00B0C",
-    visibility: "5-20m",
-    bestSeason: "May-Sep",
-    topSites: ["Scapa Flow", "Lofoten", "Silfra", "Farnes Islands"],
-    description: "Cold water diving at its finest: wrecks, drysuit adventures, seal encounters.",
+    id: "thistlegorm", name: "SS Thistlegorm Wreck", lat: 27.81, lng: 33.92, region: "Red Sea",
+    description: "WWII British supply ship sunk in 1941. Intact cargo of motorcycles, trucks, rifles, and locomotives.",
+    depthRange: "16-33m", difficulty: "Intermediate", conditions: "Can have current", visibility: "20-40m", temp: "22-28°C",
+    bestSeason: "Mar-Nov", rating: 5,
+  },
+  {
+    id: "brothers", name: "Brothers Islands", lat: 26.31, lng: 34.86, region: "Red Sea",
+    description: "Remote offshore pinnacles with oceanic whitetips, thresher sharks, and magnificent soft corals.",
+    depthRange: "10-40m+", difficulty: "Advanced", conditions: "Strong current", visibility: "25-50m", temp: "21-27°C",
+    bestSeason: "May-Sep", rating: 5,
+  },
+  {
+    id: "komodo", name: "Batu Bolong, Komodo", lat: -8.54, lng: 119.57, region: "Southeast Asia",
+    description: "Pinnacle rising from 70m with mantas, sharks, turtles, and vibrant coral in nutrient-rich currents.",
+    depthRange: "5-40m+", difficulty: "Advanced", conditions: "Strong current", visibility: "15-30m", temp: "24-28°C",
+    bestSeason: "Apr-Nov", rating: 5,
+  },
+  {
+    id: "malapascua", name: "Monad Shoal, Malapascua", lat: 11.33, lng: 124.12, region: "Southeast Asia",
+    description: "The only place in the world where thresher sharks visit a cleaning station daily at sunrise.",
+    depthRange: "15-30m", difficulty: "Intermediate", conditions: "Moderate current", visibility: "10-25m", temp: "26-29°C",
+    bestSeason: "Year-round", rating: 4,
+  },
+  {
+    id: "similan", name: "Richelieu Rock, Similan Islands", lat: 9.36, lng: 97.68, region: "Southeast Asia",
+    description: "Horseshoe-shaped pinnacle with whale sharks (Feb-May), seahorses, frogfish, and massive schools.",
+    depthRange: "5-35m", difficulty: "Intermediate", conditions: "Variable current", visibility: "15-30m", temp: "27-30°C",
+    bestSeason: "Nov-May", rating: 5,
+  },
+  {
+    id: "darwin", name: "Darwin Island, Galápagos", lat: 1.68, lng: -92.0, region: "Galápagos",
+    description: "The northernmost Galápagos islet. Massive schools of hammerheads, whale sharks, and Galápagos sharks.",
+    depthRange: "10-40m+", difficulty: "Advanced", conditions: "Strong current, surge", visibility: "10-25m", temp: "18-26°C",
+    bestSeason: "Jun-Nov", rating: 5,
+  },
+  {
+    id: "socorro", name: "Roca Partida, Socorro Islands", lat: 19.0, lng: -112.07, region: "Mexico Pacific",
+    description: "Remote volcanic pinnacle 360km offshore. Giant mantas (up to 7m), hammerheads, dolphins, and whale sharks.",
+    depthRange: "10-40m+", difficulty: "Advanced", conditions: "Strong current", visibility: "20-40m", temp: "20-26°C",
+    bestSeason: "Nov-May", rating: 5,
+  },
+  {
+    id: "cenote", name: "Dos Ojos Cenote, Yucatán", lat: 20.32, lng: -87.39, region: "Mexico Pacific",
+    description: "World's longest underwater cave system. Stunning halocline, stalactites, and crystalline freshwater.",
+    depthRange: "5-10m", difficulty: "Beginner", conditions: "Still, overhead (guided)", visibility: "50m+", temp: "25°C",
+    bestSeason: "Year-round", rating: 4,
+  },
+  {
+    id: "truk", name: "Fujikawa Maru, Truk Lagoon", lat: 7.38, lng: 151.87, region: "Micronesia",
+    description: "The crown jewel of Truk's ghost fleet. Intact Zero fighter planes, sake bottles, and engine rooms.",
+    depthRange: "15-34m", difficulty: "Intermediate", conditions: "Calm, enclosed", visibility: "20-40m", temp: "28-30°C",
+    bestSeason: "Year-round", rating: 5,
+  },
+  {
+    id: "palau", name: "Blue Corner, Palau", lat: 7.13, lng: 134.25, region: "Micronesia",
+    description: "Corner of the reef with hook-in drift diving. Gray reef sharks, eagle rays, and Napoleon wrasse.",
+    depthRange: "10-40m+", difficulty: "Advanced", conditions: "Strong current", visibility: "30-50m", temp: "28-30°C",
+    bestSeason: "Nov-Apr", rating: 5,
+  },
+  {
+    id: "scapa", name: "Scapa Flow Wrecks, Scotland", lat: 58.89, lng: -3.05, region: "Northern Europe",
+    description: "The scuttled German High Seas Fleet (1919). Seven battleships and cruisers in cold, dark water.",
+    depthRange: "12-45m", difficulty: "Technical", conditions: "Cold, dark, tidal", visibility: "5-15m", temp: "4-14°C",
+    bestSeason: "May-Sep", rating: 4,
+  },
+  {
+    id: "silfra", name: "Silfra Fissure, Iceland", lat: 64.25, lng: -21.12, region: "Northern Europe",
+    description: "Dive between the Eurasian and North American tectonic plates. Drink the purest glacial water on Earth.",
+    depthRange: "5-18m", difficulty: "Beginner", conditions: "Still, cold", visibility: "100m+", temp: "2-4°C",
+    bestSeason: "Year-round", rating: 4,
+  },
+  {
+    id: "sodwana", name: "Seven Mile Reef, Sodwana Bay", lat: -27.54, lng: 32.68, region: "South Africa",
+    description: "Southernmost coral reefs with raggies, turtles, coelacanths (deep), and seasonal whale shark visits.",
+    depthRange: "10-30m", difficulty: "Intermediate", conditions: "Surge, occasional current", visibility: "10-25m", temp: "20-26°C",
+    bestSeason: "Apr-Sep", rating: 4,
+  },
+  {
+    id: "maldives", name: "Maaya Thila, Ari Atoll", lat: 3.9, lng: 72.7, region: "Indian Ocean",
+    description: "Night dive hotspot with whitetip reef sharks hunting by torchlight. Overhangs, caves, and soft corals.",
+    depthRange: "5-30m", difficulty: "Intermediate", conditions: "Moderate current", visibility: "20-35m", temp: "27-30°C",
+    bestSeason: "Dec-Apr", rating: 5,
+  },
+  {
+    id: "molokini", name: "Molokini Crater, Hawaii", lat: 20.63, lng: -156.5, region: "Pacific",
+    description: "Sunken volcanic crater with 250+ fish species, reef sharks, monk seals, and humpbacks (seasonal).",
+    depthRange: "5-30m", difficulty: "Beginner", conditions: "Protected inside", visibility: "30-50m", temp: "24-27°C",
+    bestSeason: "Year-round", rating: 4,
+  },
+  {
+    id: "zenobia", name: "Zenobia Wreck, Cyprus", lat: 34.88, lng: 33.65, region: "Mediterranean",
+    description: "174m roll-on ferry that sank on her maiden voyage in 1980. 104 articulated lorries still on board.",
+    depthRange: "16-42m", difficulty: "Advanced", conditions: "Calm, deep", visibility: "15-25m", temp: "16-28°C",
+    bestSeason: "May-Oct", rating: 4,
   },
 ];
 
+const DIVE_SHOPS: DiveShop[] = [
+  { id: "bonaire-dive", name: "Dive Friends Bonaire", lat: 12.17, lng: -68.29, region: "Caribbean", address: "Kaya Gob N Debrot 75, Kralendijk, Bonaire", website: "https://divefriendsbonaire.com", services: ["Rentals", "Guided dives", "Nitrox", "Tech"] },
+  { id: "coz-shop", name: "Aldora Divers", lat: 20.51, lng: -86.95, region: "Caribbean", address: "Calle 5 Sur, Cozumel, Mexico", website: "https://aldora.com", services: ["Steel 120 tanks", "Nitrox", "Drift diving"] },
+  { id: "belize-shop", name: "Amigos del Mar", lat: 17.91, lng: -87.96, region: "Caribbean", address: "Front Street, San Pedro, Ambergris Caye", website: "https://amigosdive.com", services: ["Blue Hole trips", "Rentals", "Courses"] },
+  { id: "raja-shop", name: "Papua Diving", lat: -0.43, lng: 130.75, region: "Indo-Pacific", address: "Pulau Mansuar, Raja Ampat, Indonesia", website: "https://papua-diving.com", services: ["Liveaboards", "Guided dives", "Photography"] },
+  { id: "gbr-shop", name: "Mike Ball Dive Expeditions", lat: -16.92, lng: 145.78, region: "Indo-Pacific", address: "Cairns Marina, QLD, Australia", website: "https://mikeball.com", services: ["Liveaboards", "Cod Hole", "Coral Sea"] },
+  { id: "bunaken-shop", name: "Two Fish Divers", lat: 1.61, lng: 124.76, region: "Indo-Pacific", address: "Bunaken Island, North Sulawesi", website: "https://twofishdivers.com", services: ["Courses", "Rentals", "Macro"] },
+  { id: "thistlegorm-shop", name: "Emperor Divers", lat: 27.93, lng: 34.34, region: "Red Sea", address: "Sharm el Sheikh, South Sinai, Egypt", website: "https://emperordivers.com", services: ["Wreck", "Liveaboards", "Courses"] },
+  { id: "brothers-shop", name: "Blue O Two", lat: 25.07, lng: 34.9, region: "Red Sea", address: "Marsa Alam, Red Sea, Egypt", website: "https://blueotwo.com", services: ["Liveaboards", "Tech", "Wreck"] },
+  { id: "komodo-shop", name: "Komodo Dive Center", lat: -8.58, lng: 119.88, region: "Southeast Asia", address: "Labuan Bajo, Flores, Indonesia", website: "https://komododivecenter.com", services: ["Liveaboards", "Current training", "Nitrox"] },
+  { id: "malapascua-shop", name: "Evolution Diving", lat: 11.34, lng: 124.12, region: "Southeast Asia", address: "Malapascua Island, Cebu, Philippines", website: "https://evolution.com.ph", services: ["Thresher shark", "Courses", "Nitrox"] },
+  { id: "socorro-shop", name: "Nautilus Liveaboards", lat: 24.09, lng: -110.38, region: "Mexico Pacific", address: "Cabo San Lucas, BCS, Mexico", website: "https://nautilusliveaboards.com", services: ["Mantas", "Great whites", "Liveaboards"] },
+  { id: "cenote-shop", name: "Protec Tulum", lat: 20.21, lng: -87.47, region: "Mexico Pacific", address: "Carretera Tulum-Boca Paila KM 8", website: "https://protecdiving.com", services: ["Cave", "Tech", "Sidemount"] },
+  { id: "truk-shop", name: "Odyssey Adventures", lat: 7.45, lng: 151.85, region: "Micronesia", address: "Weno, Chuuk, FSM", website: "https://trukodyssey.com", services: ["Wreck", "Tech", "Liveaboards"] },
+  { id: "palau-shop", name: "Sam's Tours", lat: 7.34, lng: 134.52, region: "Micronesia", address: "Koror, Palau", website: "https://samstours.com", services: ["Reef hook", "Rentals", "Courses"] },
+  { id: "scapa-shop", name: "Scapa Scuba", lat: 58.89, lng: -2.89, region: "Northern Europe", address: "Stromness, Orkney, Scotland", website: "https://scapascuba.co.uk", services: ["Wreck", "Tech", "Drysuit"] },
+  { id: "silfra-shop", name: "Dive.is", lat: 64.26, lng: -21.12, region: "Northern Europe", address: "Thingvellir, Iceland", website: "https://dive.is", services: ["Dry suit", "Silfra guides", "Courses"] },
+  { id: "maldives-shop", name: "Carpe Diem Maldives", lat: 3.95, lng: 72.75, region: "Indian Ocean", address: "Ari Atoll, Maldives", website: "https://carpediemmaldives.com", services: ["Liveaboards", "Manta", "Whale shark"] },
+  { id: "molokini-shop", name: "Maui Dive Shop", lat: 20.71, lng: -156.44, region: "Pacific", address: "1455 S Kihei Rd, Maui, HI", website: "https://mauidiveshop.com", services: ["Molokini", "Rentals", "Courses"] },
+  { id: "zenobia-shop", name: "Dive-In Cyprus", lat: 34.68, lng: 33.04, region: "Mediterranean", address: "Larnaca Marina, Cyprus", website: "https://dive-in.com.cy", services: ["Zenobia", "Wreck", "Courses"] },
+];
+
+const REGIONS = Array.from(new Set(DIVE_SITES.map((s) => s.region))).sort();
+
+function FlyTo({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo([lat, lng], 12, { duration: 1.2 });
+  }, [lat, lng, map]);
+  return null;
+}
+
 export default function DiveSites() {
-  const [selected, setSelected] = useState<DiveRegion | null>(null);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [selectedSite, setSelectedSite] = useState<DiveSite | null>(null);
+  const [selectedShop, setSelectedShop] = useState<DiveShop | null>(null);
+  const [activeTab, setActiveTab] = useState<"sites" | "shops">("sites");
+  const [filterRegion, setFilterRegion] = useState<string>("All");
+  const [search, setSearch] = useState("");
+  const mapRef = useRef<L.Map | null>(null);
+
+  const filteredSites = DIVE_SITES.filter((s) => {
+    if (filterRegion !== "All" && s.region !== filterRegion) return false;
+    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.region.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const filteredShops = DIVE_SHOPS.filter((s) => {
+    if (filterRegion !== "All" && s.region !== filterRegion) return false;
+    if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const ratingStars = (r: number) => "★".repeat(r) + "☆".repeat(5 - r);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Dive Sites Explorer</h1>
-          <p className="text-xs text-text-tertiary mt-1">Select a region to explore conditions and top dive sites.</p>
+    <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-1 -mb-4 sm:-mt-2 sm:-mb-6 lg:-mt-4 lg:-mb-8 flex flex-col flex-1">
+      <div className="absolute bottom-20 left-4 right-4 lg:right-8 z-[1000] pointer-events-none">
+        <div className="flex flex-col items-end gap-2">
+          {selectedSite && (
+            <div className="glass-card p-4 max-w-sm pointer-events-auto animate-slide-up shadow-xl shadow-surf/10 border-surf/20">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <h3 className="text-base font-bold text-white">{selectedSite.name}</h3>
+                  <p className="text-xs text-surf">{selectedSite.region}</p>
+                </div>
+                <button onClick={() => setSelectedSite(null)} className="text-text-tertiary hover:text-white p-1">✕</button>
+              </div>
+              <p className="text-xs text-text-secondary mb-3">{selectedSite.description}</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-text-secondary"><Gauge className="w-3 h-3 text-surf" /> {selectedSite.depthRange}</div>
+                <div className="flex items-center gap-1.5 text-text-secondary"><Waves className="w-3 h-3 text-surf" /> {selectedSite.difficulty}</div>
+                <div className="flex items-center gap-1.5 text-text-secondary"><Eye className="w-3 h-3 text-surf" /> {selectedSite.visibility}</div>
+                <div className="flex items-center gap-1.5 text-text-secondary"><Thermometer className="w-3 h-3 text-surf" /> {selectedSite.temp}</div>
+                <div className="flex items-center gap-1.5 text-text-secondary"><Calendar className="w-3 h-3 text-surf" /> {selectedSite.bestSeason}</div>
+                <div className="flex items-center gap-1.5 text-amber-400">{ratingStars(selectedSite.rating)}</div>
+              </div>
+            </div>
+          )}
+          {selectedShop && (
+            <div className="glass-card p-4 max-w-sm pointer-events-auto animate-slide-up shadow-xl shadow-teal/10 border-teal/20">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-teal" />{selectedShop.name}
+                  </h3>
+                  <p className="text-xs text-teal">{selectedShop.region} · {selectedShop.address}</p>
+                </div>
+                <button onClick={() => setSelectedShop(null)} className="text-text-tertiary hover:text-white p-1">✕</button>
+              </div>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {selectedShop.services.map((s) => (
+                  <span key={s} className="pill pill-teal text-[10px]">{s}</span>
+                ))}
+              </div>
+              <a href={selectedShop.website} target="_blank" rel="noopener noreferrer" className="text-xs text-surf flex items-center gap-1 hover:underline">
+                <ExternalLink className="w-3 h-3" /> Visit website
+              </a>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-6">
-        <div className="lg:col-span-2">
-          <div className="glass-card p-4 relative">
-            <div className="relative w-full" style={{ aspectRatio: "2/1" }}>
-              <svg viewBox="0 0 100 50" className="w-full h-full" style={{ background: "linear-gradient(180deg, #041c32 0%, #04293a 100%)", borderRadius: "0.5rem" }}>
-                <defs>
-                  <radialGradient id="pin-glow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-                  </radialGradient>
-                </defs>
-                <g fill="#064663" fillOpacity="0.35" stroke="#0d7a8a" strokeWidth="0.15" strokeLinejoin="round">
-                  <path d="M14,8 L17,7 20,8 21,10 19,12 18,14 20,16 22,17 24,18 26,19 25,22 23,24 20,25 18,26 16,24 14,22 12,20 13,17 14,14 13,12 12,10Z" />
-                  <path d="M21,10 L24,9 27,10 29,12 30,14 28,16 26,17 24,18 22,17 20,16 18,14 19,12Z" />
-                  <path d="M22,17 L24,20 26,22 28,24 30,28 32,30 34,32 33,35 31,37 29,38 27,36 25,34 23,30 22,28 20,25 18,26 16,24 14,22 16,20 18,19 20,18Z" />
-                  <path d="M45,5 L48,4 51,5 54,7 53,10 51,12 49,11 47,10 45,8Z" />
-                  <path d="M47,10 L50,11 52,13 53,15 51,17 49,18 47,16 46,14 45,12 47,10Z" />
-                  <path d="M44,7 L47,8 48,10 47,12 45,14 44,12 43,10 44,7Z" />
-                  <path d="M49,18 L52,18 55,19 58,21 60,23 59,26 57,28 55,30 53,29 51,27 49,25 47,23 46,21 47,19 49,18Z" />
-                  <path d="M53,29 L56,30 58,32 59,34 57,36 55,37 53,35 51,33 52,31Z" />
-                  <path d="M55,37 L58,38 60,40 58,42 56,41 55,39Z" />
-                  <path d="M57,28 L60,27 63,28 66,30 68,32 70,34 72,36 73,38 71,40 69,42 67,40 65,38 63,36 61,34 59,32 57,30Z" />
-                  <path d="M68,22 L71,21 74,22 77,24 79,26 78,28 76,30 74,29 72,27 70,25 68,23Z" />
-                  <path d="M79,26 L82,25 85,26 88,28 90,30 89,33 87,35 85,37 83,36 81,34 79,32 78,30 79,28Z" />
-                  <path d="M85,37 L88,36 91,38 93,40 92,42 90,44 88,43 86,41 85,39Z" />
-                  <path d="M76,30 L79,32 81,34 83,36 85,37 84,39 82,41 80,40 78,38 76,36 75,34 76,32Z" />
-                  <path d="M63,28 L66,27 69,28 72,30 74,32 72,34 70,36 68,34 66,32 64,30Z" />
-                  <path d="M60,4 L63,3 66,4 68,6 67,8 65,10 63,9 61,7 60,5Z" />
-                  <path d="M58,32 L61,33 63,35 62,37 60,38 58,37 57,35Z" />
-                  <path d="M81,10 L84,11 87,12 90,14 91,17 90,20 88,22 86,20 84,18 82,16 80,14 81,12Z" />
-                  <path d="M38,14 L41,13 44,14 47,16 46,19 44,21 42,20 40,18 39,16Z" />
-                </g>
-                <g fill="none" stroke="#0d7a8a" strokeWidth="0.08" strokeOpacity="0.2">
-                  <line x1="0" y1="12.5" x2="100" y2="12.5" />
-                  <line x1="0" y1="37.5" x2="100" y2="37.5" />
-                  <line x1="25" y1="0" x2="25" y2="50" />
-                  <line x1="50" y1="0" x2="50" y2="50" />
-                  <line x1="75" y1="0" x2="75" y2="50" />
-                </g>
-                {REGIONS.map((r) => (
-                  <g
-                    key={r.id}
-                    onClick={() => setSelected(r)}
-                    onMouseEnter={() => setHovered(r.id)}
-                    onMouseLeave={() => setHovered(null)}
-                    className="cursor-pointer"
-                  >
-                    <circle cx={r.x} cy={r.y} r={hovered === r.id || selected?.id === r.id ? "3" : "1.5"} fill="#22d3ee" opacity={hovered === r.id || selected?.id === r.id ? 1 : 0.6}>
-                      <animate attributeName="r" values={selected?.id === r.id ? "1.5;3;1.5" : "1.5;2;1.5"} dur="2s" repeatCount="indefinite" />
-                    </circle>
-                    {(hovered === r.id || selected?.id === r.id) && (
-                      <>
-                        <circle cx={r.x} cy={r.y} r="4" fill="url(#pin-glow)" />
-                        <text x={r.x} y={r.y - 3} textAnchor="middle" fill="#67e8f9" fontSize="2.2" fontWeight="600">
-                          {r.name}
-                        </text>
-                      </>
-                    )}
-                  </g>
-                ))}
-                <line x1="0" y1="25" x2="100" y2="25" stroke="#064663" strokeWidth="0.15" strokeDasharray="1,2" />
-                <text x="2" y="4" fill="#4a6a80" fontSize="1.8">Divechain{" "}{`\u00B7`}{" "}Global Dive Conditions</text>
-                <text x="85" y="48" fill="#4a6a80" fontSize="1.5">Click a pin</text>
-              </svg>
-            </div>
+      <div className="shrink-0 px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-card/80 backdrop-blur-sm border-b border-card-border z-[1001]">
+        <h1 className="text-lg font-bold text-white flex items-center gap-2 shrink-0">
+          <Globe className="w-5 h-5 text-surf" /> Dive Sites Explorer
+        </h1>
 
-            <div className="grid grid-cols-5 gap-2 mt-4">
-              {REGIONS.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setSelected(r)}
-                  className={`text-xs px-2 py-1.5 rounded-lg transition-all ${
-                    selected?.id === r.id
-                      ? "bg-teal/20 text-surf border border-teal/30"
-                      : "bg-ocean/30 text-text-secondary border border-card-border hover:border-bismuth/30 hover:text-gray-200"
-                  }`}
-                >
-                  {r.name}
-                </button>
-              ))}
-            </div>
+        <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search sites or shops…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="!pl-8 !py-2 !text-sm !rounded-lg"
+            />
+          </div>
+          <select
+            value={filterRegion}
+            onChange={(e) => setFilterRegion(e.target.value)}
+            className="!w-auto !py-2 !text-sm !rounded-lg shrink-0"
+          >
+            <option value="All">All Regions</option>
+            {REGIONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-1 shrink-0">
+          <button
+            onClick={() => setActiveTab("sites")}
+            className={`text-xs px-3 py-1.5 rounded-lg transition-all touch-manipulation ${
+              activeTab === "sites" ? "bg-surf/15 text-surf border border-surf/25" : "text-text-secondary border border-card-border hover:text-gray-200"
+            }`}
+          >
+            <Anchor className="w-3.5 h-3.5 inline mr-1" />Sites ({filteredSites.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("shops")}
+            className={`text-xs px-3 py-1.5 rounded-lg transition-all touch-manipulation ${
+              activeTab === "shops" ? "bg-teal/15 text-teal border border-teal/25" : "text-text-secondary border border-card-border hover:text-gray-200"
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5 inline mr-1" />Shops ({filteredShops.length})
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 flex min-h-0">
+        <div className="w-full lg:w-[300px] xl:w-[340px] shrink-0 border-r border-card-border overflow-y-auto custom-scrollbar bg-card/40">
+          <div className="p-3 space-y-2">
+            {activeTab === "sites" ? (
+              filteredSites.length === 0 ? (
+                <p className="text-xs text-text-tertiary text-center py-8">No sites match your search.</p>
+              ) : (
+                filteredSites.map((site) => (
+                  <button
+                    key={site.id}
+                    onClick={() => { setSelectedSite(site); setSelectedShop(null); }}
+                    className={`w-full text-left glass-card p-3 transition-all touch-manipulation ${
+                      selectedSite?.id === site.id ? "border-surf/40 bg-navy/30" : "hover:border-card-border-bright"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-semibold text-white truncate">{site.name}</p>
+                      <span className={`pill text-[9px] py-0 shrink-0 ml-2 ${
+                        site.difficulty === "Beginner" ? "pill-kelp" : site.difficulty === "Intermediate" ? "pill-surf" : site.difficulty === "Advanced" ? "pill-warn" : "pill-danger"
+                      }`}>{site.difficulty}</span>
+                    </div>
+                    <p className="text-xs text-text-tertiary mb-1.5">{site.region}</p>
+                    <div className="flex items-center gap-3 text-xs text-text-secondary">
+                      <span className="flex items-center gap-1"><Gauge className="w-3 h-3" />{site.depthRange}</span>
+                      <span className="text-amber-400/80">{ratingStars(site.rating)}</span>
+                    </div>
+                  </button>
+                ))
+              )
+            ) : (
+              filteredShops.length === 0 ? (
+                <p className="text-xs text-text-tertiary text-center py-8">No shops match your search.</p>
+              ) : (
+                filteredShops.map((shop) => (
+                  <button
+                    key={shop.id}
+                    onClick={() => { setSelectedShop(shop); setSelectedSite(null); }}
+                    className={`w-full text-left glass-card p-3 transition-all touch-manipulation ${
+                      selectedShop?.id === shop.id ? "border-teal/40 bg-navy/30" : "hover:border-card-border-bright"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-semibold text-white truncate">{shop.name}</p>
+                      <Building2 className="w-3.5 h-3.5 text-teal shrink-0 ml-2" />
+                    </div>
+                    <p className="text-xs text-text-tertiary mb-1">{shop.region} · {shop.address}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {shop.services.slice(0, 3).map((s) => (
+                        <span key={s} className="pill pill-teal text-[9px] py-0 leading-none">{s}</span>
+                      ))}
+                    </div>
+                  </button>
+                ))
+              )
+            )}
           </div>
         </div>
 
-        <div>
-          {selected ? (
-            <div className="glass-card p-5 space-y-4">
-              <h2 className="text-lg font-bold text-white">{selected.name}</h2>
-              <p className="text-sm text-text-secondary">{selected.description}</p>
+        <div className="flex-1 relative">
+          <MapContainer
+            center={[5, 20]}
+            zoom={2.5}
+            minZoom={2}
+            maxZoom={16}
+            style={{ height: "100%", width: "100%", background: "#040b14" }}
+            zoomControl={false}
+            ref={mapRef}
+            attributionControl={false}
+          >
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+            />
+            {activeTab === "sites" && filteredSites.map((site) => (
+              <Marker
+                key={site.id}
+                position={[site.lat, site.lng]}
+                icon={SITE_ICON}
+                eventHandlers={{ click: () => setSelectedSite(site) }}
+              />
+            ))}
+            {activeTab === "shops" && filteredShops.map((shop) => (
+              <Marker
+                key={shop.id}
+                position={[shop.lat, shop.lng]}
+                icon={SHOP_ICON}
+                eventHandlers={{ click: () => setSelectedShop(shop) }}
+              />
+            ))}
+            {(selectedSite || selectedShop) && (
+              <FlyTo lat={selectedSite?.lat ?? selectedShop!.lat} lng={selectedSite?.lng ?? selectedShop!.lng} />
+            )}
+          </MapContainer>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="stat-box">
-                  <p className="text-sm font-bold text-surf">{selected.temp}</p>
-                  <p className="text-[9px] text-text-tertiary uppercase">Water</p>
-                </div>
-                <div className="stat-box">
-                  <p className="text-sm font-bold text-surf">{selected.visibility}</p>
-                  <p className="text-[9px] text-text-tertiary uppercase">Visibility</p>
-                </div>
-                <div className="stat-box">
-                  <p className="text-sm font-bold text-surf">{selected.bestSeason}</p>
-                  <p className="text-[9px] text-text-tertiary uppercase">Season</p>
-                </div>
-              </div>
-
-              <div>
-                <div className="section-title">Top Dive Sites</div>
-                <ul className="space-y-1.5">
-                  {selected.topSites.map((site) => (
-                    <li key={site} className="flex items-center gap-2 text-sm text-gray-300">
-                      <ChevronRight className="w-3 h-3 text-teal shrink-0" />
-                      {site}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <div className="absolute bottom-3 right-3 z-[1000] flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 text-[10px] text-text-secondary bg-card/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-card-border">
+              <span className="w-2.5 h-2.5 rounded-full bg-surf/90 border border-teal inline-block" /> Dive Sites
             </div>
-          ) : (
-            <div className="glass-card p-6 text-center">
-              <Globe className="w-10 h-10 text-bismuth/50 mx-auto mb-3" />
-              <p className="text-sm text-text-secondary">Click a region on the map or select from the list to explore dive conditions.</p>
+            <div className="flex items-center gap-1.5 text-[10px] text-text-secondary bg-card/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-card-border">
+              <span className="w-2.5 h-2.5 rounded bg-teal border border-surf inline-block" /> Dive Shops
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
