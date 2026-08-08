@@ -18,7 +18,7 @@ const PROBLEMS = [
   {
     icon: FileStack,
     title: "Paper logs get destroyed",
-    body: "Water, fire, moves, or just time — physical logbooks are fragile. Decades of dive history can vanish in an instant.",
+    body: "Water, fire, moves, or just time - physical logbooks are fragile. Decades of dive history can vanish in an instant.",
   },
   {
     icon: Lock,
@@ -32,7 +32,7 @@ const STEPS = [
     num: "1",
     icon: Wallet,
     title: "Get a wallet",
-    body: "Download Core, MetaMask, or Rabby — it takes 30 seconds. This becomes your dive log's key.",
+    body: "Download Core, MetaMask, or Rabby - it takes 30 seconds. This becomes your dive log's key.",
     action: null,
   },
   {
@@ -53,7 +53,7 @@ const STEPS = [
     num: "4",
     icon: PenLine,
     title: "Log your first dive",
-    body: "Fill in depth, time, gas, and environment details. Your buddy signs an EIP-712 attestation — cryptographically proving the dive happened.",
+    body: "Fill in depth, time, gas, and environment details. Your buddy signs an EIP-712 attestation - cryptographically proving the dive happened.",
     action: "log",
   },
 ];
@@ -62,12 +62,12 @@ const PILLARS = [
   {
     icon: FileStack, tone: "surf" as const,
     title: "Permanent & immutable",
-    body: "Once logged, a dive can never be altered or deleted. You can void mistakes, but the original stays — creating an honest, auditable record.",
+    body: "Once logged, a dive can never be altered or deleted. You can void mistakes, but the original stays - creating an honest, auditable record.",
   },
   {
     icon: ShieldCheck, tone: "kelp" as const,
     title: "Cryptographically verifiable",
-    body: "Your buddy signs a typed message vouching the dive happened. It's bound to your logbook, chain, and dive number — replay-proof and independently verifiable.",
+    body: "Your buddy signs a typed message vouching the dive happened. It's bound to your logbook, chain, and dive number - replay-proof and independently verifiable.",
   },
   {
     icon: Fingerprint, tone: "teal" as const,
@@ -77,7 +77,7 @@ const PILLARS = [
   {
     icon: Globe, tone: "surf" as const,
     title: "Portable across apps",
-    body: "Any software that speaks ERC-8260 can read your dives. Switch apps without losing data — your logbook lives on-chain, not in anyone's database.",
+    body: "Any software that speaks ERC-8260 can read your dives. Switch apps without losing data - your logbook lives on-chain, not in anyone's database.",
   },
   {
     icon: KeyRound, tone: "kelp" as const,
@@ -94,27 +94,27 @@ const PILLARS = [
 const FAQS = [
   {
     q: "How much does it cost?",
-    a: "Deploying your logbook costs ~2M gas — roughly $0.30–0.80 on Avalanche C-Chain. Each dive log costs a fraction of a cent. Total cost of ownership: pocket change.",
+    a: "Deploying your logbook costs ~2M gas - roughly $0.30–0.80 on Avalanche C-Chain. Each dive log costs a fraction of a cent. Total cost of ownership: pocket change.",
   },
   {
     q: "What if I lose my wallet?",
-    a: "Your logbook is a contract on-chain — it survives independently. If you still have the seed phrase, restore your wallet. If you lost the seed phrase too, the data is still readable forever; you just can't add new entries from that wallet.",
+    a: "Your logbook is a contract on-chain - it survives independently. If you still have the seed phrase, restore your wallet. If you lost the seed phrase too, the data is still readable forever; you just can't add new entries from that wallet.",
   },
   {
     q: "Can dive shops or employers verify my dives?",
-    a: "Yes — that's the point. They can independently verify every dive, every buddy attestation, and the complete audit trail using any ERC-8260 compatible tool. No login required.",
+    a: "Yes - that's the point. They can independently verify every dive, every buddy attestation, and the complete audit trail using any ERC-8260 compatible tool. No login required.",
   },
   {
     q: "Is my dive data public?",
-    a: "Your wallet address is visible on-chain, but no personal identifiers are stored. Zero PII. It's pseudonymous — like a Reddit username that only you control.",
+    a: "Your wallet address is visible on-chain, but no personal identifiers are stored. Zero PII. It's pseudonymous - like a Reddit username that only you control.",
   },
   {
     q: "What watches and dive computers are supported?",
-    a: "Currently, you log manually. We're building automatic import from Shearwater, Garmin, Suunto, and any dive computer that exports — sign up below to know when it ships.",
+    a: "Currently, you log manually. We're building automatic import from Shearwater, Garmin, Suunto, and any dive computer that exports - sign up below to know when it ships.",
   },
   {
     q: "Why Avalanche and not another chain?",
-    a: "Avalanche offers sub-second finality, fees under a cent, and the C-Chain is EVM-compatible — meaning any Ethereum wallet works. It's fast enough that logging a dive between surface intervals is instant.",
+    a: "Avalanche offers sub-second finality, fees under a cent, and the C-Chain is EVM-compatible - meaning any Ethereum wallet works. It's fast enough that logging a dive between surface intervals is instant.",
   },
 ];
 
@@ -162,7 +162,7 @@ export default function Home() {
 
           <p className="text-base sm:text-lg text-text-secondary max-w-lg leading-relaxed mb-2">
             Stop trusting dive watch companies with your career. Deploy your sovereign logbook on
-            Avalanche — permanent, portable, and cryptographically verifiable.
+            Avalanche - permanent, portable, and cryptographically verifiable.
           </p>
           <p className="text-sm text-text-tertiary max-w-lg mb-7">
             Paper logs rot. Apps shut down. Dive computers lock you in. Your dive history deserves better.
@@ -248,7 +248,7 @@ export default function Home() {
           <p className="section-title justify-center mb-3"><Waves className="w-4 h-4" /> The problem with dive logs today</p>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold gradient-text mb-3">Your dive history shouldn't have an expiration date.</h2>
           <p className="text-sm sm:text-base text-text-secondary max-w-2xl mx-auto">
-            Diving is a lifelong pursuit. Your records — depth profiles, gas mixes, decompression history, buddy sign-offs — are safety-critical evidence of your experience. Yet we trust them to systems designed to sell us the next gadget.
+            Diving is a lifelong pursuit. Your records - depth profiles, gas mixes, decompression history, buddy sign-offs - are safety-critical evidence of your experience. Yet we trust them to systems designed to sell us the next gadget.
           </p>
         </div>
 
@@ -314,7 +314,7 @@ export default function Home() {
                     </a>
                   ))}
                   <p className="text-[11px] text-text-tertiary mt-1">
-                    Only need ~$0.50 worth — about 0.05 AVAX
+                    Only need ~$0.50 worth - about 0.05 AVAX
                   </p>
                 </div>
               )}
@@ -420,7 +420,7 @@ export default function Home() {
             </h2>
             <p className="text-sm sm:text-base text-text-secondary max-w-xl mx-auto mb-2">
               We're building direct integration with Shearwater, Garmin, Suunto, and Open Source Dive Computer
-              exports. Your dive profile, gas data, deco obligations, and environmental readings — automatically
+              exports. Your dive profile, gas data, deco obligations, and environmental readings - automatically
               logged on-chain the moment you surface.
             </p>
             <p className="text-xs text-text-tertiary max-w-md mx-auto mb-6">
@@ -514,7 +514,7 @@ export default function Home() {
           />
           <h2 className="text-xl sm:text-3xl font-bold gradient-text mb-3">Take control of your dive history.</h2>
           <p className="text-sm text-text-secondary mb-6 max-w-md mx-auto">
-            Deploy takes one transaction. Logging takes 30 seconds. Your dive career lives on-chain forever — no subscription, no lock-in, no company that can take it away.
+            Deploy takes one transaction. Logging takes 30 seconds. Your dive career lives on-chain forever - no subscription, no lock-in, no company that can take it away.
           </p>
           {isConnected && hasContract ? (
             <button onClick={() => navigate("/log-dive")} className="btn-primary text-base px-8 py-4">

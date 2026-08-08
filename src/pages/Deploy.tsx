@@ -86,7 +86,7 @@ export default function Deploy() {
         {[
           { icon: KeyRound, title: "You are the owner", body: "Your wallet is the sole writer. No admin, no multisig, no upgrade path." },
           { icon: Fingerprint, title: "Zero on-chain PII", body: "No name, age, or biometrics. Your wallet address is your identity." },
-          { icon: ShieldCheck, title: "Append-only forever", body: "Records can't be edited or deleted — only voided with an audit trail." },
+          { icon: ShieldCheck, title: "Append-only forever", body: "Records can't be edited or deleted - only voided with an audit trail." },
         ].map((f) => (
           <div key={f.title} className="glass-card-inner p-4">
             <f.icon className="w-5 h-5 text-surf mb-2" />
@@ -190,7 +190,7 @@ export default function Deploy() {
       {hasEnoughAvax && !isDeploying && (
         <div className="flex items-center gap-2 justify-center mt-4 text-xs text-text-tertiary">
           <Check className="w-3.5 h-3.5 text-kelp" />
-          Balance: {Number(balance!.formatted).toFixed(4)} AVAX — ready to deploy
+          Balance: {Number(balance!.formatted).toFixed(4)} AVAX - ready to deploy
         </div>
       )}
 

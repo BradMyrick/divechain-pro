@@ -92,7 +92,7 @@ export default function Attest() {
         <h1 className="text-3xl font-bold gradient-text">Attest a dive</h1>
         <p className="text-sm text-text-tertiary mt-2 max-w-md mx-auto">
           You're vouching that this dive happened. Your signature is cryptographically bound to this exact
-          logbook, chain and dive — it can't be replayed elsewhere.
+          logbook, chain and dive - it can't be replayed elsewhere.
         </p>
       </div>
 
@@ -103,10 +103,10 @@ export default function Attest() {
           <div className="flex items-center gap-2 text-text-tertiary text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Loading dive…</div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            <Preview label="Location" value={String(diveEnv?.location ?? "—")} />
+            <Preview label="Location" value={String(diveEnv?.location ?? "-")} />
             <Preview label="Date" value={new Date(Number(diveRec.diveDate) * 1000).toLocaleDateString()} />
-            <Preview label="Max Depth" value={`${diveData?.maxDepth ?? "—"}`} />
-            <Preview label="Bottom Time" value={`${diveData?.bottomTimeMinutes ?? "—"} min`} />
+            <Preview label="Max Depth" value={`${diveData?.maxDepth ?? "-"}`} />
+            <Preview label="Bottom Time" value={`${diveData?.bottomTimeMinutes ?? "-"} min`} />
           </div>
         )}
         <p className="text-[10px] text-text-tertiary mt-3 break-all font-mono">{req.contractAddress}</p>

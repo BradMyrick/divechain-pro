@@ -140,9 +140,8 @@ function DiveListItem({
   return (
     <button
       onClick={onSelect}
-      className={`w-full text-left glass-card p-3 transition-all cursor-pointer ${
-        isSelected ? "border-surf/40 bg-navy/20 shadow-md shadow-surf/5" : "hover:border-card-border-bright"
-      } ${isVoided ? "opacity-50" : ""}`}
+      className={`w-full text-left glass-card p-3 transition-all cursor-pointer ${isSelected ? "border-surf/40 bg-navy/20 shadow-md shadow-surf/5" : "hover:border-card-border-bright"
+        } ${isVoided ? "opacity-50" : ""}`}
     >
       <div className="flex items-start justify-between mb-1.5">
         <div>
@@ -158,7 +157,7 @@ function DiveListItem({
       <div className="flex items-center gap-3 text-xs">
         <span className="text-white font-medium tabular-nums">{String(data?.maxDepth ?? 0)}{dU}</span>
         <span className="text-text-tertiary tabular-nums">{String(data?.bottomTimeMinutes ?? 0)}min</span>
-        <span className="pill text-[9px] py-0">{DIVE_MODE_LABELS[Number(data?.mode) as DiveMode] ?? "—"}</span>
+        <span className="pill text-[9px] py-0">{DIVE_MODE_LABELS[Number(data?.mode) as DiveMode] ?? "-"}</span>
       </div>
       {Boolean(env?.location) && (
         <p className="text-[11px] text-text-tertiary mt-1.5 truncate flex items-center gap-1"><MapPin className="w-3 h-3" /> {String(env.location)}</p>

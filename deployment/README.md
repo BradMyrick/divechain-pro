@@ -1,4 +1,4 @@
-# Divechain.pro — ERC-8260 Deployment
+# Divechain.pro - ERC-8260 Deployment
 
 Foundry project for the **final ERC-8260 Dive Log** reference contract
 (`SovereignDiveLog`). The sources under `src/` are verbatim copies of the

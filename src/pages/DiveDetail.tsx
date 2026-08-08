@@ -168,13 +168,13 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-text-tertiary uppercase tracking-wider">Mode</p>
-                <p className="text-sm font-semibold text-white mt-0.5">{DIVE_MODE_LABELS[Number(data?.mode) as DiveMode] ?? "—"}</p>
+                <p className="text-sm font-semibold text-white mt-0.5">{DIVE_MODE_LABELS[Number(data?.mode) as DiveMode] ?? "-"}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap text-xs text-text-secondary">
               <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {fmtDate(d.diveDate as bigint)}</span>
               <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {bottomTime} min</span>
-              <span className="pill pill-teal">{DIVE_PURPOSE_LABELS[Number(data?.purpose) as DivePurpose] ?? "—"}</span>
+              <span className="pill pill-teal">{DIVE_PURPOSE_LABELS[Number(data?.purpose) as DivePurpose] ?? "-"}</span>
               <span className="pill">{UNIT_SYSTEM_LABELS[units]}</span>
               {hasCoords && (
                 <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="pill pill-surf hover:brightness-125">
@@ -228,7 +228,7 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
           <div className="grid grid-cols-2 gap-3">
             <Telemetry icon={<Thermometer className="w-3 h-3" />} label="Water Temp" value={`${env?.waterTemp ?? 0}${tU}`} />
             <Telemetry icon={<Wind className="w-3 h-3" />} label="Air Temp" value={`${env?.airTemp ?? 0}${tU}`} />
-            <Telemetry icon={<Eye className="w-3 h-3" />} label="Bottom Type" value={BOTTOM_TYPE_LABELS[Number(env?.bottomType) as BottomType] ?? "—"} />
+            <Telemetry icon={<Eye className="w-3 h-3" />} label="Bottom Type" value={BOTTOM_TYPE_LABELS[Number(env?.bottomType) as BottomType] ?? "-"} />
             <Telemetry icon={<Wind className="w-3 h-3" />} label="Current" value={`${Number(env?.currentKnots ?? 0)} kn`} />
             {Boolean(env?.weatherConditions) && <Telemetry icon={<Wind className="w-3 h-3" />} label="Weather" value={String(env?.weatherConditions)} />}
             {hasCoords && (
@@ -243,13 +243,13 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
         <div className="glass-card hairline p-5">
           <div className="section-title"><Cylinder className="w-4 h-4" /> Equipment &amp; Gas</div>
           <div className="grid grid-cols-2 gap-3">
-            <Telemetry icon={<Cylinder className="w-3 h-3" />} label="Suit" value={SUIT_TYPE_LABELS[Number(data?.suit) as SuitType] ?? "—"} />
+            <Telemetry icon={<Cylinder className="w-3 h-3" />} label="Suit" value={SUIT_TYPE_LABELS[Number(data?.suit) as SuitType] ?? "-"} />
             <Telemetry icon={<Droplets className="w-3 h-3" />} label="Gas" value={`${gasLabel} · O₂ ${o2Pct}%`} />
             <Telemetry icon={<Droplets className="w-3 h-3" />} label="Pressure In" value={`${gas?.cylinderPressureIn ?? 0} ${pU}`} />
             <Telemetry icon={<Droplets className="w-3 h-3" />} label="Pressure Out" value={`${gas?.cylinderPressureOut ?? 0} ${pU}`} />
             {decomp && Number(decomp.decompType) !== 0 && (
               <>
-                <Telemetry icon={<AlertTriangle className="w-3 h-3" />} label="Deco" value={DECOMP_TYPE_LABELS[Number(decomp.decompType) as DecompressionType] ?? "—"} />
+                <Telemetry icon={<AlertTriangle className="w-3 h-3" />} label="Deco" value={DECOMP_TYPE_LABELS[Number(decomp.decompType) as DecompressionType] ?? "-"} />
                 <Telemetry icon={<Clock className="w-3 h-3" />} label="Deco Time" value={`${decomp.totalDecompTimeMinutes} min`} />
               </>
             )}
@@ -310,7 +310,7 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
               <p className="text-xs font-semibold text-white">Request a buddy attestation</p>
             </div>
             <p className="text-[11px] text-text-tertiary mb-3 leading-snug">
-              Share this link with your dive buddy. They'll sign an EIP-712 message on their own wallet — no gas for them — and the attestation is recorded on-chain.
+              Share this link with your dive buddy. They'll sign an EIP-712 message on their own wallet - no gas for them - and the attestation is recorded on-chain.
             </p>
             <div className="flex items-center gap-2">
               <input readOnly value={attUrl} className="font-mono text-[11px] !py-2" />

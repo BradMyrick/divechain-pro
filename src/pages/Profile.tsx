@@ -49,7 +49,7 @@ export default function Profile() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold gradient-text">Contract Manager</h1>
         <p className="text-sm text-text-tertiary mt-1">
-          Your wallet <span className="text-text-secondary">is</span> your identity. No name, no profile —
+          Your wallet <span className="text-text-secondary">is</span> your identity. No name, no profile -
           ERC-8260 stores zero PII on-chain.
         </p>
       </div>
@@ -114,7 +114,7 @@ export default function Profile() {
                 {isCompliant ? (
                   <><ShieldCheck className="w-4 h-4 text-kelp" /><p className="text-xs text-kelp">ERC-8260 compliant (IDiveLog 0x321ef561)</p></>
                 ) : (
-                  <><AlertTriangle className="w-4 h-4 text-danger" /><p className="text-xs text-danger">Contract does not implement IDiveLog — it may be a legacy/non-standard logbook.</p></>
+                  <><AlertTriangle className="w-4 h-4 text-danger" /><p className="text-xs text-danger">Contract does not implement IDiveLog - it may be a legacy/non-standard logbook.</p></>
                 )}
               </div>
             )}
