@@ -3,7 +3,7 @@ import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 
 export const config = getDefaultConfig({
   appName: "Divechain",
-  projectId: "70a3137c4b8369465907036fa8867c39",
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? "",
   chains: [avalancheFuji, avalanche],
   ssr: true,
 });
