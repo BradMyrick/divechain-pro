@@ -496,7 +496,7 @@ export default function Home() {
         <div className="glass-card-inner p-4 sm:p-5 mt-4 text-center">
           <p className="text-sm text-text-secondary">
             More questions?{" "}
-            <a href="https://github.com/anomalyco/divechain-pro" target="_blank" rel="noopener noreferrer" className="text-surf hover:underline font-medium">
+            <a href="https://github.com/BradMyrick/divechain-pro" target="_blank" rel="noopener noreferrer" className="text-surf hover:underline font-medium">
               Check the docs on GitHub
             </a>
             {" "}or ask in our community.

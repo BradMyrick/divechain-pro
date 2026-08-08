@@ -26,7 +26,7 @@ createRoot(document.getElementById("root")!).render(
           })}
           appInfo={{
             appName: "Divechain",
-            learnMoreUrl: "https://github.com/anomalyco/divechain-pro",
+            learnMoreUrl: "https://github.com/BradMyrick/divechain-pro",
           }}
         >
           <BrowserRouter>
