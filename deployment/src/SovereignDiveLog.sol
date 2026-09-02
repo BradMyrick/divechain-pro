@@ -6,6 +6,16 @@ import "./interfaces/IDiveLog.sol";
 import "./interfaces/IDiveLogTypedData.sol";
 
 contract SovereignDiveLog is IDiveLog {
+    error InvalidDate();
+    error InvalidBatchSize(uint256 length);
+
+    // secp256k1n / 2 — upper bound for canonical (non-malleable) s values (EIP-2)
+    uint256 private constant _HALF_N =
+        0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
+
+    // Maximum dives per batchLogDives() call; guards against block-gas self-DoS
+    uint256 public constant MAX_BATCH_SIZE = 100;
+
     address public immutable owner;
 
     uint256 public diveCount;
@@ -22,8 +32,7 @@ contract SovereignDiveLog is IDiveLog {
     }
 
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IDiveLog).interfaceId;
+        return interfaceId == type(IERC165).interfaceId || interfaceId == type(IDiveLog).interfaceId;
     }
 
     modifier onlyOwner() {
@@ -34,6 +43,7 @@ contract SovereignDiveLog is IDiveLog {
     function logDive(DiveInput calldata input) external onlyOwner returns (uint256) {
         if (input.data.maxDepth == 0) revert InvalidDepth();
         if (input.data.bottomTimeMinutes == 0) revert InvalidTimes();
+        if (input.diveDate == 0) revert InvalidDate();
 
         uint256 diveId = ++diveCount;
 
@@ -54,13 +64,19 @@ contract SovereignDiveLog is IDiveLog {
         return diveId;
     }
 
-    function batchLogDives(DiveInput[] calldata inputs) external onlyOwner returns (uint256[] memory) {
+    function batchLogDives(DiveInput[] calldata inputs)
+        external
+        onlyOwner
+        returns (uint256[] memory)
+    {
         uint256 len = inputs.length;
+        if (len == 0 || len > MAX_BATCH_SIZE) revert InvalidBatchSize(len);
         uint256[] memory ids = new uint256[](len);
 
-        for (uint256 i; i < len; ) {
+        for (uint256 i; i < len;) {
             if (inputs[i].data.maxDepth == 0) revert InvalidDepth();
             if (inputs[i].data.bottomTimeMinutes == 0) revert InvalidTimes();
+            if (inputs[i].diveDate == 0) revert InvalidDate();
 
             uint256 diveId = ++diveCount;
 
@@ -80,17 +96,18 @@ contract SovereignDiveLog is IDiveLog {
 
             emit DiveLogged(diveId, inputs[i].diveDate);
 
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         return ids;
     }
 
-    function voidDive(
-        uint256 diveId,
-        uint256 supersededById,
-        string calldata reason
-    ) external onlyOwner {
+    function voidDive(uint256 diveId, uint256 supersededById, string calldata reason)
+        external
+        onlyOwner
+    {
         if (diveId == 0 || diveId > diveCount) revert DiveNotFound(diveId);
         if (_voids[diveId].isVoided) revert DiveAlreadyVoided(diveId);
         if (supersededById != 0) {
@@ -109,33 +126,25 @@ contract SovereignDiveLog is IDiveLog {
         emit DiveVoided(diveId, supersededById, msg.sender, reason);
     }
 
-    function attestDive(
-        uint256 diveId,
-        uint256 nonce,
-        bytes calldata signature
-    ) external {
+    function attestDive(uint256 diveId, uint256 nonce, bytes calldata signature) external {
         if (diveId == 0 || diveId > diveCount) revert DiveNotFound(diveId);
         if (_voids[diveId].isVoided) revert DiveAlreadyVoided(diveId);
 
-        bytes32 digest = DiveLogTypedData.attestationDigest(
-            diveId,
-            address(this),
-            block.chainid,
-            nonce
-        );
+        bytes32 digest =
+            DiveLogTypedData.attestationDigest(diveId, address(this), block.chainid, nonce);
 
         address attester = _recoverSigner(digest, signature);
         if (attester == address(0)) revert InvalidSignature();
-        if (_attesterNonces[attester] != nonce) revert NonceMismatch(_attesterNonces[attester], nonce);
+        if (_attesterNonces[attester] != nonce) {
+            revert NonceMismatch(_attesterNonces[attester], nonce);
+        }
         if (_hasAttested[diveId][attester]) revert AlreadyAttested(diveId, attester);
 
         _attesterNonces[attester] = nonce + 1;
         _hasAttested[diveId][attester] = true;
-        _attestations[diveId].push(Attestation({
-            attester: attester,
-            attestedAt: uint64(block.timestamp),
-            nonce: nonce
-        }));
+        _attestations[diveId].push(
+            Attestation({attester: attester, attestedAt: uint64(block.timestamp), nonce: nonce})
+        );
 
         emit DiveAttested(diveId, attester);
     }
@@ -152,10 +161,12 @@ contract SovereignDiveLog is IDiveLog {
     function getMultipleDives(uint256[] calldata diveIds) external view returns (DiveLog[] memory) {
         uint256 len = diveIds.length;
         DiveLog[] memory dives = new DiveLog[](len);
-        for (uint256 i; i < len; ) {
+        for (uint256 i; i < len;) {
             if (diveIds[i] == 0 || diveIds[i] > diveCount) revert DiveNotFound(diveIds[i]);
             dives[i] = _dives[diveIds[i]];
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
         return dives;
     }
@@ -163,9 +174,11 @@ contract SovereignDiveLog is IDiveLog {
     function getAllDiveIds() external view returns (uint256[] memory) {
         uint256 total = diveCount;
         uint256[] memory ids = new uint256[](total);
-        for (uint256 i; i < total; ) {
+        for (uint256 i; i < total;) {
             ids[i] = i + 1;
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
         return ids;
     }
@@ -193,7 +206,11 @@ contract SovereignDiveLog is IDiveLog {
         return _attesterNonces[attester];
     }
 
-    function _recoverSigner(bytes32 digest, bytes calldata signature) internal pure returns (address) {
+    function _recoverSigner(bytes32 digest, bytes calldata signature)
+        internal
+        pure
+        returns (address)
+    {
         if (signature.length != 65) return address(0);
 
         bytes32 r;
@@ -208,6 +225,7 @@ contract SovereignDiveLog is IDiveLog {
 
         if (v < 27) v += 27;
         if (v != 27 && v != 28) return address(0);
+        if (uint256(s) > _HALF_N) return address(0);
 
         return ecrecover(digest, v, r, s);
     }

@@ -24,14 +24,14 @@ import {
 } from "../lib/contracts";
 import type { Attestation } from "../lib/types";
 import { buildAttestationRequestParams } from "../lib/attestations";
+import DiveProfileSketch from "../components/DiveProfileSketch";
+import QRCode from "../components/QRCode";
+import FlagChip from "../components/FlagChip";
 import {
   ArrowLeft, Loader2, MapPin, Clock, Calendar, Thermometer, Eye, Wind, Droplets,
   ShieldCheck, AlertTriangle, Waves, Activity, Navigation, Copy, Check,
-  Link2, Cylinder,
+  Link2, Cylinder, QrCode,
 } from "lucide-react";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts";
 
 const EXPLORERS: Record<number, string> = {
   43113: "https://testnet.snowtrace.io",
@@ -79,23 +79,6 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
       bottomTime: Number(data?.bottomTimeMinutes ?? 0),
     };
   }, [dive, voidInfo]);
-
-  const profileData = useMemo(() => {
-    if (!parsed) return [];
-    const { maxDepth, avgDepth, bottomTime } = parsed;
-    const points: { time: number; depth: number }[] = [];
-    const steps = Math.max(20, bottomTime);
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      let depth: number;
-      if (t < 0.1) depth = maxDepth * (t / 0.1);
-      else if (t < 0.25) depth = maxDepth + (avgDepth - maxDepth) * ((t - 0.1) / 0.15);
-      else if (t < 0.75) depth = avgDepth + Math.sin((t - 0.25) * 12) * (maxDepth * 0.05);
-      else depth = avgDepth * (1 - (t - 0.75) / 0.25);
-      points.push({ time: Math.round(t * bottomTime * 10) / 10, depth: Math.round(Math.max(0, depth) * 10) / 10 });
-    }
-    return points;
-  }, [parsed]);
 
   if (!contractAddress) {
     return <div className="text-center py-20 text-text-secondary">No contract configured.</div>;
@@ -169,6 +152,9 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
               <div className="text-right">
                 <p className="text-[10px] text-text-tertiary uppercase tracking-wider">Mode</p>
                 <p className="text-sm font-semibold text-white mt-0.5">{DIVE_MODE_LABELS[Number(data?.mode) as DiveMode] ?? "-"}</p>
+                <div className="mt-1.5 flex justify-end">
+                  <FlagChip mode={Number(data?.mode)} purpose={Number(data?.purpose)} />
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap text-xs text-text-secondary">
@@ -194,31 +180,10 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
         <Metric icon={<Activity className="w-3.5 h-3.5" />} label="Avg Depth" value={`${avgDepth}`} unit={dU} />
       </div>
 
-      {/* Profile chart */}
+      {/* Profile sketch */}
       <div className="glass-card hairline p-5 mb-4">
         <div className="section-title"><Activity className="w-4 h-4" /> Dive Profile</div>
-        <div className="h-[240px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={profileData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="depthGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#0d9488" stopOpacity={0.04} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 139, 186, 0.1)" />
-              <XAxis dataKey="time" tick={{ fill: "#93a8bd", fontSize: 11 }} axisLine={{ stroke: "rgba(45,139,186,0.2)" }} tickLine={false} />
-              <YAxis reversed domain={[0, "dataMax + 5"]} tick={{ fill: "#93a8bd", fontSize: 11 }} axisLine={{ stroke: "rgba(45,139,186,0.2)" }} tickLine={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#0a1622", border: "1px solid rgba(45,139,186,0.4)", borderRadius: 8, fontSize: 12, color: "#eaf4fb" }}
-                labelStyle={{ color: "#93a8bd" }}
-                formatter={(v: unknown) => [`${v} ${dU}`, "Depth"]}
-                labelFormatter={(l: unknown) => `Time: ${l} min`}
-              />
-              <Area type="monotone" dataKey="depth" stroke="#22d3ee" strokeWidth={2} fill="url(#depthGradient)" dot={false} activeDot={{ r: 4, fill: "#22d3ee", stroke: "#0a1622", strokeWidth: 2 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <DiveProfileSketch dive={parsed.d as never} height={230} />
       </div>
 
       {/* Telemetry */}
@@ -287,6 +252,9 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
                     )}
                     <span className="pill pill-kelp"><ShieldCheck className="w-3 h-3" /> EIP-712</span>
                     <span className="pill">nonce {a.nonce.toString()}</span>
+                    <Link to={`/diver/${a.attester}`} className="pill pill-surf no-underline hover:brightness-125">
+                      <Link2 className="w-3 h-3" /> profile
+                    </Link>
                   </div>
                   <p className="text-[11px] text-text-tertiary mt-0.5">
                     {new Date(Number(a.attestedAt) * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
@@ -302,21 +270,30 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
           </div>
         )}
 
-        {/* Request attestation (anyone viewing can share; owner most relevant) */}
+        {/* Request attestation (QR for the buddy to scan + copyable link) */}
         {!isVoided && address && (
           <div className="glass-card-inner p-4 border-surf/15">
             <div className="flex items-center gap-2 mb-2">
-              <Link2 className="w-4 h-4 text-surf" />
-              <p className="text-xs font-semibold text-white">Request a buddy attestation</p>
+              <QrCode className="w-4 h-4 text-surf" />
+              <p className="text-xs font-semibold text-white">Ask your buddy to sign this dive</p>
             </div>
             <p className="text-[11px] text-text-tertiary mb-3 leading-snug">
-              Share this link with your dive buddy. They'll sign an EIP-712 message on their own wallet - no gas for them - and the attestation is recorded on-chain.
+              They scan the QR, sign an EIP-712 message on their own wallet. Free, no gas, and the
+              attestation is recorded on-chain. Works between phones, even mid-boat.
             </p>
-            <div className="flex items-center gap-2">
-              <input readOnly value={attUrl} className="font-mono text-[11px] !py-2" />
-              <button onClick={copyLink} className="btn-outline text-xs shrink-0">
-                {linkCopied ? <><Check className="w-3.5 h-3.5 text-kelp" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
-              </button>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <QRCode value={attUrl} size={132} />
+              <div className="flex-1 w-full">
+                <div className="flex items-center gap-2">
+                  <input readOnly value={attUrl} className="font-mono text-[11px] !py-2" />
+                  <button onClick={copyLink} className="btn-outline text-xs shrink-0">
+                    {linkCopied ? <><Check className="w-3.5 h-3.5 text-kelp" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                  </button>
+                </div>
+                <p className="text-[10px] text-text-tertiary mt-2">
+                  Signed attestations can also be relayed by anyone. Including you with your next entry.
+                </p>
+              </div>
             </div>
           </div>
         )}

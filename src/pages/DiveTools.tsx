@@ -9,6 +9,7 @@ export default function DiveTools() {
         <h1 className="text-xl sm:text-2xl font-bold text-white">Dive Tools</h1>
         <p className="text-xs text-text-tertiary mt-1">Calculators and planners for safer diving.</p>
       </div>
+      <div className="depth-ruler mb-6" />
 
       <div className="flex gap-1.5 mb-4 sm:mb-5 flex-wrap">
         {([

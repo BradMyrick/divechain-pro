@@ -235,12 +235,47 @@ function FlyTo({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
+/**
+ * Keyless basemap providers. Carto now requires a paid API key, so the map
+ * defaults to Esri World Imagery (satellite — reefs and atolls are visible),
+ * with the Esri Ocean basemap (bathymetry) and OpenStreetMap as alternates.
+ * Esri tile scheme is {z}/{y}/{x}; OSM policy prefers the bare hostname (no {s}).
+ */
+type BasemapKey = "satellite" | "ocean" | "street";
+
+const BASEMAPS: Record<
+  BasemapKey,
+  { label: string; url: string; attribution: string; maxNativeZoom: number; dim?: boolean }
+> = {
+  satellite: {
+    label: "Satellite",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution:
+      "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+    maxNativeZoom: 19,
+  },
+  ocean: {
+    label: "Ocean",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Source: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri",
+    maxNativeZoom: 13,
+  },
+  street: {
+    label: "Street",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxNativeZoom: 19,
+    dim: true,
+  },
+};
+
 export default function DiveSites() {
   const [selectedSite, setSelectedSite] = useState<DiveSite | null>(null);
   const [selectedShop, setSelectedShop] = useState<DiveShop | null>(null);
   const [activeTab, setActiveTab] = useState<"sites" | "shops">("sites");
   const [filterRegion, setFilterRegion] = useState<string>("All");
   const [search, setSearch] = useState("");
+  const [basemapKey, setBasemapKey] = useState<BasemapKey>("satellite");
   const mapRef = useRef<L.Map | null>(null);
 
   const filteredSites = DIVE_SITES.filter((s) => {
@@ -420,11 +455,14 @@ export default function DiveSites() {
             style={{ height: "100%", width: "100%", background: "#040b14" }}
             zoomControl={false}
             ref={mapRef}
-            attributionControl={false}
           >
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+              key={basemapKey}
+              url={BASEMAPS[basemapKey].url}
+              attribution={BASEMAPS[basemapKey].attribution}
+              maxNativeZoom={BASEMAPS[basemapKey].maxNativeZoom}
+              maxZoom={16}
+              className={BASEMAPS[basemapKey].dim ? "basemap-dim" : undefined}
             />
             {activeTab === "sites" && filteredSites.map((site) => (
               <Marker
@@ -446,6 +484,23 @@ export default function DiveSites() {
               <FlyTo lat={selectedSite?.lat ?? selectedShop!.lat} lng={selectedSite?.lng ?? selectedShop!.lng} />
             )}
           </MapContainer>
+
+          <div className="absolute top-3 right-3 z-[1000] flex gap-1 bg-card/80 backdrop-blur-sm p-1 rounded-lg border border-card-border">
+            {(Object.keys(BASEMAPS) as BasemapKey[]).map((key) => (
+              <button
+                key={key}
+                onClick={() => setBasemapKey(key)}
+                className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-all touch-manipulation ${
+                  basemapKey === key
+                    ? "bg-surf/15 text-surf border border-surf/25"
+                    : "text-text-secondary border border-transparent hover:text-gray-200"
+                }`}
+                title={`${BASEMAPS[key].label} basemap`}
+              >
+                {BASEMAPS[key].label}
+              </button>
+            ))}
+          </div>
 
           <div className="absolute bottom-3 right-3 z-[1000] flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5 text-[10px] text-text-secondary bg-card/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-card-border">

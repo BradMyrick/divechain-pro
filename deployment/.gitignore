@@ -6,3 +6,5 @@ lib/
 *.address
 .fuji-address
 .cchain-address
+flattened/
+eip712-fixture.json

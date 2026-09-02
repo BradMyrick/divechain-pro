@@ -74,16 +74,36 @@ export default function Community() {
         </div>
       </div>
 
+      <div className="depth-ruler mb-6" />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+        <button onClick={() => navigate("/demo")} className="stat-box glass-card-hi text-left group touch-manipulation">
+          <p className="stat-label">New here?</p>
+          <p className="text-sm text-white mt-1 font-medium group-hover:text-surf transition-colors">
+            Explore a live logbook, no wallet needed
+          </p>
+          <p className="text-xs text-text-tertiary mt-1">
+            Depths, gas profiles, corrected entries and buddy attestations, on a real ERC-8260 shape.
+          </p>
+        </button>
+        <div className="stat-box text-left">
+          <p className="stat-label">The two flags</p>
+          <p className="text-xs text-text-secondary mt-1 leading-relaxed">
+            Diver Down marks recreational dives; Alpha marks commercial and surface-supplied work.
+            Every logbook speaks both: <span className="text-surf">two flags, one logbook</span>.
+          </p>
+        </div>
+      </div>
+
       <div className="flex gap-2 mt-4 mb-6 flex-wrap">
         {tags.map((tag) => (
           <button
             key={tag}
             onClick={() => setActiveTag(tag)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-all touch-manipulation min-h-[36px] ${
-              activeTag === tag
-                ? "bg-teal/20 text-surf border-teal/30"
-                : "bg-ocean/20 text-text-secondary border-card-border hover:text-gray-200 active:bg-navy/30"
-            }`}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all touch-manipulation min-h-[36px] ${activeTag === tag
+              ? "bg-teal/20 text-surf border-teal/30"
+              : "bg-ocean/20 text-text-secondary border-card-border hover:text-gray-200 active:bg-navy/30"
+              }`}
           >
             {tag}
           </button>

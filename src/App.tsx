@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Deploy from "./pages/Deploy";
@@ -10,6 +10,8 @@ import DiveSites from "./pages/DiveSites";
 import DiveTools from "./pages/DiveTools";
 import Community from "./pages/Community";
 import Attest from "./pages/Attest";
+import PublicDiver from "./pages/PublicDiver";
+import Demo from "./pages/Demo";
 
 export default function App() {
   return (
@@ -25,6 +27,9 @@ export default function App() {
         <Route path="/tools" element={<DiveTools />} />
         <Route path="/community" element={<Community />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/diver/:ref" element={<PublicDiver />} />
+        <Route path="/demo" element={<Demo />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );

@@ -2,17 +2,18 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useDiveContract } from "../contexts/DiveContractContext";
+import WalletConnectWarning from "./WalletConnectWarning";
+import { DivechainMark } from "./flags/Flags";
 import { useState } from "react";
 import {
   BookOpen,
   PenSquare,
-  FileCode2,
   Globe,
   Wrench,
   Users,
   Menu,
   X,
-  Anchor,
+  UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -34,7 +35,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/logbook", label: "Logbook", icon: BookOpen, needsContract: true },
       { path: "/log-dive", label: "Log Dive", icon: PenSquare, needsContract: true },
-      { path: "/profile", label: "Contract", icon: FileCode2, needsContract: false },
+      { path: "/profile", label: "Diver", icon: UserRound, needsContract: false },
     ],
   },
   {
@@ -54,15 +55,15 @@ function Sidebar({ hasContract, isActive }: { hasContract: boolean; isActive: (p
     <aside className="hidden lg:flex flex-col w-[260px] shrink-0 border-r border-card-border bg-card/50 backdrop-blur-sm relative z-20 h-screen sticky top-0">
       <div className="p-5 border-b border-card-border">
         <Link to="/" className="flex items-center gap-2.5 no-underline">
-          <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
-            <Anchor className="w-5 h-5 text-surf" />
+          <div className="w-11 h-11 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
+            <DivechainMark className="w-8 h-auto" />
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent leading-tight">
-              Divechain
+            <span className="font-display text-xl font-bold tracking-[0.04em] text-white leading-none">
+              DIVECHAIN
             </span>
-            <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none">
-              Sovereign Dive Log
+            <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none mt-1">
+              Two flags · One logbook
             </span>
           </div>
         </Link>
@@ -113,11 +114,11 @@ function MobileHeader({ hasContract, isActive, mobileMenu, setMobileMenu }: {
     <header className="lg:hidden shrink-0 bg-card/95 backdrop-blur-md border-b border-card-border z-50 pt-safe">
       <div className="px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 no-underline">
-          <div className="w-8 h-8 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
-            <Anchor className="w-4 h-4 text-surf" />
+          <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
+            <DivechainMark className="w-7 h-auto" />
           </div>
-          <span className="text-sm font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent">
-            Divechain
+          <span className="font-display text-lg font-bold tracking-[0.04em] text-white">
+            DIVECHAIN
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -182,20 +183,22 @@ export default function Layout() {
       <div className="aurora-bg" />
       <div className="grid-overlay" />
 
+      <WalletConnectWarning />
+
       {/* Disconnected Header */}
       {!isConnected && (
         <header className="shrink-0 z-50 border-b border-card-border/50 bg-abyss/80 backdrop-blur-xl pt-safe">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             <Link to="/" className="flex items-center gap-2.5 no-underline shrink-0">
-              <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
-                <Anchor className="w-5 h-5 text-surf" />
+              <div className="w-10 h-10 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
+                <DivechainMark className="w-7 h-auto" />
               </div>
               <div className="flex flex-col">
-                <span className="text-lg font-bold bg-gradient-to-r from-surf via-foam to-bubble bg-clip-text text-transparent leading-tight">
-                  Divechain
+                <span className="font-display text-2xl font-bold tracking-[0.04em] text-white leading-none">
+                  DIVECHAIN
                 </span>
-                <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none hidden sm:block">
-                  Sovereign Dive Log
+                <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none mt-1 hidden sm:block">
+                  Two flags · One logbook
                 </span>
               </div>
             </Link>
