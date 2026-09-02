@@ -5,9 +5,13 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { SOVEREIGN_DIVE_LOG_ABI } from "../lib/contracts";
-import { buildAttestationTypedData, parseAttestationRequestParams } from "../lib/attestations";
 import {
-  ShieldCheck, Loader2, ArrowLeft, ShieldAlert, KeyRound, PenLine, CheckCircle, Waves, Clock,
+  buildAttestationTypedData, parseAttestationRequestParams,
+  buildSignatureHandoffUrl, parseSignatureHandoff,
+} from "../lib/attestations";
+import QRCode from "../components/QRCode";
+import {
+  ShieldCheck, Loader2, ArrowLeft, ShieldAlert, KeyRound, PenLine, CheckCircle, Waves, Clock, QrCode, Copy, Check,
 } from "lucide-react";
 
 const CHAIN_NAMES: Record<number, string> = { 43113: "Avalanche Fuji", 43114: "Avalanche C-Chain" };
@@ -19,6 +23,7 @@ export default function Attest() {
   const { switchChain } = useSwitchChain();
 
   const req = parseAttestationRequestParams(params);
+  const handoff = parseSignatureHandoff(params);
 
   const { data: dive } = useReadContract({
     address: req?.contractAddress,
@@ -41,6 +46,13 @@ export default function Attest() {
 
   const [signature, setSignature] = useState<`0x${string}` | null>(null);
   const [signError, setSignError] = useState<string>("");
+  const [showHandoffQr, setShowHandoffQr] = useState(false);
+  const [handoffCopied, setHandoffCopied] = useState(false);
+
+  const handoffUrl =
+    !!req && signature && nonce !== undefined
+      ? buildSignatureHandoffUrl(req, nonce as bigint, signature)
+      : "";
 
   if (!req) {
     return (
@@ -71,13 +83,13 @@ export default function Attest() {
     }
   };
 
-  const handleRelay = () => {
-    if (!signature) return;
+  const handleRelay = (sig: `0x${string}`, n: bigint) => {
+    if (!req) return;
     writeContract({
       address: req.contractAddress,
       abi: SOVEREIGN_DIVE_LOG_ABI,
       functionName: "attestDive",
-      args: [req.diveId, (nonce as bigint) ?? 0n, signature],
+      args: [req.diveId, n, sig],
     });
   };
 
@@ -138,7 +150,33 @@ export default function Attest() {
       {relayError && <p className="text-sm text-danger text-center mb-3">{relayError.message}</p>}
 
       {/* Actions */}
-      {!address ? null : isConfirming ? (
+      {handoff && !isSuccess ? (
+        /* QR handoff relay mode: a buddy already signed — anyone records it. */
+        <div className="glass-card hairline p-5 mb-4 border-kelp/20">
+          <div className="section-title"><QrCode className="w-4 h-4" /> Signed attestation handed to you</div>
+          <p className="text-xs text-text-secondary mb-4 leading-relaxed">
+            A buddy has cryptographically signed this attestation. Recording it on-chain costs a
+            fraction of a cent — your wallet pays the gas, the diver gets the credit.
+          </p>
+          <div className="glass-card-inner p-3 mb-3 border-kelp/20 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-kelp shrink-0" />
+            <p className="text-xs text-kelp truncate font-mono">
+              sig {handoff.signature.slice(0, 12)}…{handoff.signature.slice(-8)} · nonce {handoff.nonce.toString()}
+            </p>
+          </div>
+          <button
+            onClick={() => handleRelay(handoff.signature, handoff.nonce)}
+            disabled={isRelaying}
+            className="btn-primary w-full text-base"
+          >
+            {isRelaying ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Confirm…</>
+            ) : (
+              <><ShieldCheck className="w-4 h-4" /> Record attestation on-chain</>
+            )}
+          </button>
+        </div>
+      ) : !address ? null : isConfirming ? (
         <div className="glass-card-inner p-4 text-center border-kelp/20">
           <Loader2 className="w-5 h-5 text-kelp mx-auto mb-1 animate-spin" />
           <p className="text-sm text-kelp">Recording attestation on-chain…</p>
@@ -159,11 +197,45 @@ export default function Attest() {
             <CheckCircle className="w-4 h-4 text-kelp shrink-0" />
             <p className="text-xs text-kelp truncate font-mono">Signed: {signature.slice(0, 10)}…{signature.slice(-8)}</p>
           </div>
-          <button onClick={handleRelay} disabled={isRelaying} className="btn-primary w-full text-base">
-            {isRelaying ? <><Loader2 className="w-4 h-4 animate-spin" /> Confirm relay…</> : <><ShieldCheck className="w-4 h-4" /> Submit on-chain</>}
-          </button>
+
+          {!showHandoffQr ? (
+            <>
+              <button onClick={() => handleRelay(signature, (nonce as bigint) ?? 0n)} disabled={isRelaying} className="btn-primary w-full text-base">
+                {isRelaying ? <><Loader2 className="w-4 h-4 animate-spin" /> Confirm relay…</> : <><ShieldCheck className="w-4 h-4" /> Submit on-chain now</>}
+              </button>
+              <button onClick={() => setShowHandoffQr(true)} className="btn-outline w-full text-sm">
+                <QrCode className="w-4 h-4" /> Let the diver record it instead
+              </button>
+            </>
+          ) : (
+            <div className="glass-card hairline p-5 text-center">
+              <p className="text-xs font-semibold text-white mb-1">Let the diver scan this</p>
+              <p className="text-[11px] text-text-tertiary mb-4">
+                They record the attestation with their next transaction — you pay nothing.
+              </p>
+              {handoffUrl ? (
+                <>
+                  <div className="flex justify-center mb-3">
+                    <QRCode value={handoffUrl} size={176} />
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(handoffUrl);
+                      setHandoffCopied(true);
+                      setTimeout(() => setHandoffCopied(false), 1500);
+                    }}
+                    className="btn-ghost text-xs"
+                  >
+                    {handoffCopied ? <><Check className="w-3 h-3 text-kelp" /> Copied</> : <><Copy className="w-3 h-3" /> Copy link</>}
+                  </button>
+                </>
+              ) : (
+                <Loader2 className="w-5 h-5 text-text-tertiary animate-spin mx-auto" />
+              )}
+            </div>
+          )}
           <p className="text-[11px] text-text-tertiary text-center">
-            <Clock className="w-3 h-3 inline mr-1" />Submitting records the attestation. Any account may relay this signature.
+            <Clock className="w-3 h-3 inline mr-1" />Signatures are replay-proof and can be relayed by anyone.
           </p>
         </div>
       )}

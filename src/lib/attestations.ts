@@ -70,3 +70,31 @@ export function parseAttestationRequestParams(
     diveId: BigInt(dive),
   };
 }
+
+export interface SignatureHandoff {
+  req: AttestationRequest;
+  nonce: bigint;
+  signature: `0x${string}`;
+}
+
+/** A signed attestation handed to another device — the diver (or anyone) relays it. */
+export function buildSignatureHandoffUrl(
+  req: AttestationRequest,
+  nonce: bigint,
+  signature: `0x${string}`,
+): string {
+  const p = buildAttestationRequestParams(req);
+  p.set("nonce", nonce.toString());
+  p.set("sig", signature);
+  return `${window.location.origin}/attest?${p.toString()}`;
+}
+
+export function parseSignatureHandoff(search: URLSearchParams): SignatureHandoff | null {
+  const req = parseAttestationRequestParams(search);
+  const nonce = search.get("nonce");
+  const sig = search.get("sig");
+  if (!req || !nonce || !sig) return null;
+  if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return null;
+  if (!/^\d+$/.test(nonce)) return null;
+  return { req, nonce: BigInt(nonce), signature: sig as `0x${string}` };
+}

@@ -22,6 +22,13 @@
   --color-danger: #ef4444;
   --color-sonar: #00ffc8;
 
+  /* Dive flags — the two international diver signals */
+  --color-flag-red: #E0483A;
+  --color-flag-red-deep: #C0271C;
+  --color-flag-white: #F5F9FC;
+  --color-alpha-blue: #2F80C3;
+  --color-alpha-blue-deep: #1D5A94;
+
   --color-card: #060f1a;
   --color-card-border: rgba(26, 111, 160, 0.15);
   --color-card-border-bright: rgba(45, 139, 186, 0.45);
@@ -32,7 +39,7 @@
   --color-text-tertiary: #4b637a;
 
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Space Grotesk", "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -56,8 +63,11 @@ body {
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
   color: #f0f6fc;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
 }
+
+/* Barlow Condensed reads best slightly larger and tighter */
+.font-display { font-weight: 600; }
 
 .font-mono { font-family: var(--font-mono); }
 .tabular-nums { font-variant-numeric: tabular-nums; }
@@ -469,6 +479,18 @@ input[type="number"]::-webkit-outer-spin-button { opacity: 0.4; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #122b41; border-radius: 3px; }
 
+/* ========== LEAFLET ========== */
+.leaflet-control-attribution {
+  background: rgba(2, 7, 13, 0.75) !important;
+  color: var(--color-text-tertiary) !important;
+  font-size: 9px !important;
+  padding: 2px 6px !important;
+  border-top-left-radius: 6px;
+}
+.leaflet-control-attribution a { color: var(--color-text-secondary) !important; }
+/* Street tiles are bright — dim them to sit with the dark UI */
+.basemap-dim { filter: brightness(0.72) saturate(0.75) contrast(1.05); }
+
 /* ========== RECHARTS ========== */
 .recharts-text { fill: var(--color-text-secondary) !important; font-family: var(--font-sans) !important; }
 .recharts-cartesian-grid line { stroke: rgba(45, 139, 186, 0.1) !important; }
@@ -498,3 +520,71 @@ input[type="number"]::-webkit-outer-spin-button { opacity: 0.4; }
 /* ========== RESPONSIVE HELPERS ========== */
 .touch-manipulation { touch-action: manipulation; }
 .overscroll-contain { overscroll-behavior: contain; }
+
+/* ========== DIVE FLAGS ========== */
+.pill-flag-red {
+  color: var(--color-flag-red);
+  border-color: rgba(224, 72, 58, 0.3);
+  background: rgba(224, 72, 58, 0.08);
+}
+.pill-alpha {
+  color: var(--color-alpha-blue);
+  border-color: rgba(47, 128, 195, 0.35);
+  background: rgba(47, 128, 195, 0.1);
+}
+
+/* Flags keep crisp edges at small sizes */
+.flag-svg { shape-rendering: geometricPrecision; }
+
+/* ========== DEPTH RULER (section divider) ========== */
+.depth-ruler {
+  height: 10px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(45, 139, 186, 0.35) 0 1px,
+    transparent 1px 12px
+  );
+  mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+}
+.depth-ruler-tall { align-self: stretch; width: 10px;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(45, 139, 186, 0.35) 0 1px,
+    transparent 1px 14px
+  );
+  mask-image: linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
+}
+
+/* ========== GOD RAYS (hero light shafts) ========== */
+.god-rays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from 200deg at 78% -10%,
+    transparent 0deg,
+    rgba(103, 232, 249, 0.06) 8deg,
+    transparent 16deg,
+    transparent 30deg,
+    rgba(103, 232, 249, 0.045) 38deg,
+    transparent 46deg,
+    transparent 62deg,
+    rgba(47, 128, 195, 0.05) 70deg,
+    transparent 78deg
+  );
+  filter: blur(2px);
+  animation: rays-sway 14s ease-in-out infinite alternate;
+}
+@keyframes rays-sway {
+  from { transform: translateX(-2%) skewX(-2deg); opacity: 0.85; }
+  to { transform: translateX(2%) skewX(2deg); opacity: 1; }
+}
+
+/* ========== ESTIMATED BADGE (sketch data, not telemetry) ========== */
+.pill-estimate {
+  color: var(--color-gold);
+  border-color: rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.07);
+}

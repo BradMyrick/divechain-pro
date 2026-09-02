@@ -7,6 +7,17 @@ import { BrowserRouter } from "react-router-dom";
 import { DiveContractProvider } from "./contexts/DiveContractContext";
 import { config } from "./config/wagmi";
 import App from "./App";
+
+// Self-hosted fonts (no third-party CDN requests)
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/inter/700.css";
+import "@fontsource/barlow-condensed/500.css";
+import "@fontsource/barlow-condensed/600.css";
+import "@fontsource/barlow-condensed/700.css";
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/600.css";
 import "@rainbow-me/rainbowkit/styles.css";
 import "./index.css";
 

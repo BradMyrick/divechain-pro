@@ -20,6 +20,10 @@ import {
 } from "../lib/contracts";
 import type { DiveInput } from "../lib/types";
 import { ZERO_BYTES32, ZERO_BYTES1 } from "../lib/types";
+import { buildAttestationRequestParams } from "../lib/attestations";
+import QRCode from "../components/QRCode";
+import FlagChip from "../components/FlagChip";
+import { useAccount } from "wagmi";
 import { BookOpen, CheckCircle, Loader2, MapPin, Compass } from "lucide-react";
 
 const toUnix = (dt: string): number => (dt ? Math.floor(new Date(dt).getTime() / 1000) : 0);
@@ -27,8 +31,9 @@ const todayDateStr = () => new Date().toISOString().slice(0, 10);
 
 export default function LogDive() {
   const navigate = useNavigate();
+  const { chain } = useAccount();
   const { hasContract, contractAddress } = useDiveContract();
-  const { logDive, isPending, isConfirming, isSuccess, error } = useDiveLog(contractAddress);
+  const { logDive, diveCount, isPending, isConfirming, isSuccess, error } = useDiveLog(contractAddress);
 
   const [diveDate, setDiveDate] = useState(todayDateStr());
   const [units, setUnits] = useState<UnitSystem>(UnitSystem.Metric);
@@ -161,6 +166,10 @@ export default function LogDive() {
               <Select value={purpose} onChange={setPurpose as (n: number) => void} options={DIVE_PURPOSE_LABELS} />
             </Field>
           </div>
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-[11px] text-text-tertiary">This entry flies:</span>
+            <FlagChip mode={mode} purpose={purpose} className="!text-[11px]" />
+          </div>
         </div>
 
         {/* Profile / depth */}
@@ -280,9 +289,37 @@ export default function LogDive() {
 
         {error && <p className="text-sm text-danger text-center">{error.message}</p>}
         {isSuccess && (
-          <div className="glass-card-inner p-4 text-center border-kelp/30 flex flex-col items-center gap-1">
-            <p className="text-kelp font-medium flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Dive logged permanently</p>
-            <button type="button" onClick={() => navigate("/logbook")} className="text-sm text-surf underline mt-1">View in logbook</button>
+          <div className="glass-card hairline p-6 mt-5 text-center animate-slide-up">
+            <CheckCircle className="w-9 h-9 text-kelp mx-auto mb-2" />
+            <p className="text-kelp font-semibold">Dive logged permanently.</p>
+            {diveCount !== undefined && (
+              <p className="text-xs text-text-tertiary mt-1">Entry #{diveCount.toString()} in your sovereign logbook.</p>
+            )}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mt-4">
+              {contractAddress && diveCount !== undefined && (
+                <div>
+                  <QRCode
+                    value={`${window.location.origin}/attest?${buildAttestationRequestParams({
+                      chainId: chain?.id ?? 43114,
+                      contractAddress,
+                      diveId: diveCount,
+                    }).toString()}`}
+                    size={120}
+                  />
+                  <p className="text-[10px] text-text-tertiary mt-1.5 max-w-[130px]">
+                    Buddy scans to sign — free for them
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                <button type="button" onClick={() => navigate("/logbook")} className="btn-primary text-sm">
+                  View in logbook
+                </button>
+                <button type="button" onClick={() => window.location.reload()} className="btn-ghost text-sm">
+                  Log another
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </form>

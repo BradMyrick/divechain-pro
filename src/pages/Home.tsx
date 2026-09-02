@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useNavigate } from "react-router-dom";
 import { useDiveContract } from "../contexts/DiveContractContext";
+import { DiverDownFlag, AlphaFlag, DivechainMark } from "../components/flags/Flags";
 import {
   Anchor, KeyRound, ShieldCheck, Zap, Lock, FileStack, Fingerprint,
   Waves, BookOpen, ArrowRight, PenLine, Wallet, Fuel,
   Watch, BellRing, Check, ChevronRight, ExternalLink, Coffee, Globe,
-  Users, Wrench,
+  Users, Wrench, Link2, Play,
 } from "lucide-react";
 
 const PROBLEMS = [
@@ -94,7 +95,7 @@ const PILLARS = [
 const FAQS = [
   {
     q: "How much does it cost?",
-    a: "Deploying your logbook costs ~2M gas - roughly $0.30–0.80 on Avalanche C-Chain. Each dive log costs a fraction of a cent. Total cost of ownership: pocket change.",
+    a: "Claiming your logbook costs ~2M gas — roughly $0.10–0.50 on Avalanche C-Chain. Each dive entry costs a fraction of a cent. Total cost of ownership: pocket change.",
   },
   {
     q: "What if I lose my wallet?",
@@ -127,10 +128,8 @@ const BUY_AVAX_OPTIONS = [
 
 export default function Home() {
   const { isConnected } = useAccount();
-  const { hasContract, setContract } = useDiveContract();
+  const { hasContract, needsAdoption } = useDiveContract();
   const navigate = useNavigate();
-  const [showImport, setShowImport] = useState(false);
-  const [importAddr, setImportAddr] = useState("");
   const [email, setEmail] = useState("");
   const [notifyDone, setNotifyDone] = useState(false);
   const [showAvaxHelp, setShowAvaxHelp] = useState(false);
@@ -170,10 +169,15 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-lg">
             {!isConnected ? (
-              <div className="glass-card-inner p-3 px-4 flex items-center gap-2 border-warn/20 w-full sm:w-auto justify-center">
-                <img src="/dc-icon.png" alt="" className="w-5 h-5 opacity-60" />
-                <p className="text-sm text-text-secondary">Connect your wallet to get started</p>
-              </div>
+              <>
+                <div className="glass-card-inner p-3 px-4 flex items-center gap-2 border-warn/20 w-full sm:w-auto justify-center">
+                  <DivechainMark className="w-7 h-auto" />
+                  <p className="text-sm text-text-secondary">Connect your wallet to get started</p>
+                </div>
+                <button onClick={() => navigate("/demo")} className="btn-outline text-base w-full sm:w-auto">
+                  <Play className="w-4 h-4" /> Explore a live logbook
+                </button>
+              </>
             ) : hasContract ? (
               <>
                 <button onClick={() => navigate("/log-dive")} className="btn-primary text-base w-full sm:w-auto">
@@ -183,61 +187,47 @@ export default function Home() {
                   Open logbook <ArrowRight className="w-4 h-4" />
                 </button>
               </>
+            ) : needsAdoption ? (
+              <>
+                <button onClick={() => navigate("/deploy")} className="btn-primary text-base w-full sm:w-auto">
+                  <Link2 className="w-4 h-4" /> Register your logbook
+                </button>
+                <button onClick={() => navigate("/deploy")} className="btn-outline text-base w-full sm:w-auto">
+                  Found an existing logbook on this device
+                </button>
+              </>
             ) : (
               <>
                 <button onClick={() => navigate("/deploy")} className="btn-primary text-base w-full sm:w-auto">
                   <KeyRound className="w-4 h-4" /> Claim your logbook
                 </button>
-                <button onClick={() => setShowImport(true)} className="btn-outline text-base w-full sm:w-auto">
-                  Bind existing contract
+                <button onClick={() => navigate("/demo")} className="btn-outline text-base w-full sm:w-auto">
+                  <Play className="w-4 h-4" /> Explore a live logbook
                 </button>
               </>
             )}
           </div>
-
-          {isConnected && !hasContract && showImport && (
-            <div className="glass-card hairline p-5 mt-5 w-full max-w-lg">
-              <p className="text-xs text-text-secondary mb-3 uppercase tracking-wider font-semibold">
-                Bind an existing SovereignDiveLog
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={importAddr}
-                  onChange={(e) => setImportAddr(e.target.value)}
-                  placeholder="0x… contract address"
-                />
-                <button
-                  onClick={() => {
-                    if (importAddr.startsWith("0x") && importAddr.length === 42) {
-                      setContract(importAddr);
-                      navigate("/logbook");
-                    }
-                  }}
-                  disabled={importAddr.length !== 42}
-                  className="btn-primary shrink-0"
-                >
-                  Bind
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Sonar emblem */}
+        {/* Flags emblem — the two international diver signals */}
         <div className="hidden lg:flex items-center justify-center shrink-0">
-          <div className="relative w-[280px] h-[280px] flex items-center justify-center">
-            <div className="sonar-ring" />
-            <div className="sonar-ring" style={{ animationDelay: "1.3s" }} />
-            <div className="sonar-ring" style={{ animationDelay: "2.6s" }} />
-            <div className="absolute inset-0 rounded-full border border-surf/10" />
-            <div className="absolute inset-8 rounded-full border border-surf/5" />
-            <div className="absolute inset-16 rounded-full border border-surf/5" />
-            <img
-              src="/DC-LOGO-SCUBA.png"
-              alt="Divechain scuba diver logo"
-              className="w-40 h-40 object-contain drop-shadow-[0_0_40px_rgba(34,211,238,0.3)] relative z-10 animate-float"
-            />
+          <div className="relative w-[300px] p-6 glass-card hairline overflow-hidden">
+            <div className="god-rays" />
+            <div className="relative z-10 space-y-4">
+              <div className="animate-float">
+                <DiverDownFlag className="w-full h-auto rounded-md shadow-lg shadow-flag-red/25" />
+                <p className="text-[10px] uppercase tracking-[0.2em] text-text-tertiary mt-2 text-center">
+                  Diver Down · Recreational
+                </p>
+              </div>
+              <div className="depth-ruler" />
+              <div className="animate-float" style={{ animationDelay: "1.2s" }}>
+                <AlphaFlag className="w-full h-auto shadow-lg shadow-alpha-blue/25" />
+                <p className="text-[10px] uppercase tracking-[0.2em] text-text-tertiary mt-2 text-center">
+                  Alpha · Commercial
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -403,6 +393,40 @@ export default function Home() {
                 Attestation(uint256 diveId, address verifyingContract, uint256 nonce)
               </code>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== TWO FLAGS, ONE LOGBOOK ===== */}
+      <section className="mb-12 lg:mb-16">
+        <div className="text-center mb-8">
+          <p className="section-title justify-center mb-3"><Anchor className="w-4 h-4" /> Two flags, one logbook</p>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold gradient-text mb-3">
+            Every dive on the water has a flag. So does every dive in your logbook.
+          </h2>
+          <p className="text-sm sm:text-base text-text-secondary max-w-2xl mx-auto">
+            The same two signals you fly from the boat live in your ERC-8260 logbook — so a weekend
+            reef diver and a saturation welder keep one permanent, verifiable record.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="glass-card hairline p-5 sm:p-6 animate-slide-up">
+            <DiverDownFlag className="w-24 h-auto rounded-sm mb-4 shadow-md shadow-flag-red/20" />
+            <h3 className="text-lg font-semibold text-white mb-2">Diver Down — recreational</h3>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              The red flag with the white stripe: a diver down, keep clear. Recreational dives —
+              reefs, wrecks, drifts, photo hunts — carry the Diver Down mark on every entry.
+            </p>
+          </div>
+          <div className="glass-card hairline p-5 sm:p-6 animate-slide-up animate-delay-1">
+            <AlphaFlag className="w-24 h-auto mb-4 shadow-md shadow-alpha-blue/20" />
+            <h3 className="text-lg font-semibold text-white mb-2">Alpha — commercial</h3>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              The blue-and-white swallowtail: divers down, slow past. Surface-supplied and working
+              dives — inspection, salvage, welding, EOD — fly Alpha, and surface-supplied time is
+              tracked separately on your public profile.
+            </p>
           </div>
         </div>
       </section>

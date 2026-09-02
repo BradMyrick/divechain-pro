@@ -2,20 +2,20 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {SovereignDiveLog} from "../src/SovereignDiveLog.sol";
+import {DiveLogFactory} from "../src/DiveLogFactory.sol";
 
-/// @notice Deploys an ERC-8260 SovereignDiveLog owned by LOGBOOK_OWNER (defaults to the deployer).
-///         forge script script/Deploy.s.sol -rw <rpc> --broadcast --private-key <key>
+/// @notice Deploys the DiveLogFactory — the on-chain wallet → logbook registry.
+///         Divers then call factory.createLogbook() from the dApp (per-wallet),
+///         or factory.adoptLogbook(addr) to register pre-factory logbooks.
+///
+///         forge script script/Deploy.s.sol --rpc-url <rpc> --broadcast --private-key <key> --slow
 contract DeployScript is Script {
-    function run() external returns (SovereignDiveLog log) {
-        address owner = vm.envOr("LOGBOOK_OWNER", msg.sender);
-
+    function run() external returns (DiveLogFactory factory) {
         vm.startBroadcast();
-        log = new SovereignDiveLog(owner);
+        factory = new DiveLogFactory();
         vm.stopBroadcast();
 
-        console.log("SovereignDiveLog deployed at:", address(log));
-        console.log("Owner:", owner);
+        console.log("DiveLogFactory deployed at:", address(factory));
         console.log("Chain ID:", block.chainid);
     }
 }

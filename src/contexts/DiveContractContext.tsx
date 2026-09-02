@@ -1,164 +1,134 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
-import { useAccount } from "wagmi";
+import { createContext, useContext, useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { useAccount, useReadContract } from "wagmi";
+import {
+  DIVE_LOG_FACTORY_ABI,
+  factoryAddress,
+  readCachedLogbook,
+  readLegacyBinding,
+  writeCachedLogbook,
+  clearCachedLogbook,
+} from "../lib/factory";
 
-const STORAGE_KEY = "divechain_contracts_v2";
-const OLD_KEY = "divechain_contracts";
-const LEGACY_KEY = "divechain_contract";
-
-type ContractRegistry = Record<string, string>;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
 
 interface DiveContractState {
+  /** Wallet's registered logbook on the current chain (factory-resolved). */
   contractAddress: `0x${string}` | undefined;
   hasContract: boolean;
-  setContract: (addr: string) => void;
-  clearContract: () => void;
+  /** Factory lookup (or legacy fallback resolution) still in flight. */
+  isResolving: boolean;
+  /** A DiveLogFactory is deployed on the current chain. */
+  factoryConfigured: boolean;
+  /**
+   * A logbook binding known locally (legacy registry or cache) that the factory
+   * does not know about — offer a one-click adoptLogbook() migration.
+   */
+  needsAdoption: `0x${string}` | undefined;
+  /** Dismiss the adoption prompt for this session. */
+  dismissAdoption: () => void;
   walletKey: string;
   chainId: number | undefined;
+  /** Re-run the factory lookup (after create/adopt/release transactions). */
+  refresh: () => void;
 }
 
 const DiveContractContext = createContext<DiveContractState>({
   contractAddress: undefined,
   hasContract: false,
-  setContract: () => {},
-  clearContract: () => {},
+  isResolving: false,
+  factoryConfigured: false,
+  needsAdoption: undefined,
+  dismissAdoption: () => {},
   walletKey: "",
   chainId: undefined,
+  refresh: () => {},
 });
-
-function loadRegistry(): ContractRegistry {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as ContractRegistry) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveRegistry(registry: ContractRegistry) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(registry));
-}
-
-function scopeKey(walletKey: string, chainId: number): string {
-  return `${walletKey}:${chainId}`;
-}
-
-function migrateOldFormat(existing: ContractRegistry): ContractRegistry {
-  const registry = { ...existing };
-
-  try {
-    const old = window.localStorage.getItem(OLD_KEY);
-    if (old) {
-      const parsed = JSON.parse(old) as Record<string, string>;
-      let migrated = false;
-      for (const [walletKey, addr] of Object.entries(parsed)) {
-        if (addr.startsWith("0x") && addr.length === 42) {
-          const scoped = `${walletKey}:43113`;
-          if (!registry[scoped]) {
-            registry[scoped] = addr;
-            migrated = true;
-          }
-        }
-      }
-      if (migrated) window.localStorage.removeItem(OLD_KEY);
-    }
-  } catch { /* ignore */ }
-
-  try {
-    const legacy = window.localStorage.getItem(LEGACY_KEY);
-    if (legacy) {
-      const addr = legacy.startsWith("0x") && legacy.length === 42 ? legacy : null;
-      if (addr) {
-        const keys = Object.keys(registry);
-        const needsMigration = !keys.some((k) => registry[k] === addr);
-        if (needsMigration) {
-          registry[`legacy:43113`] = addr;
-        }
-      }
-      window.localStorage.removeItem(LEGACY_KEY);
-    }
-  } catch { /* ignore */ }
-
-  if (Object.keys(registry).length > 0) {
-    saveRegistry(registry);
-  }
-  return registry;
-}
 
 export function DiveContractProvider({ children }: { children: ReactNode }) {
   const { address, chainId } = useAccount();
-  const [registry, setRegistry] = useState<ContractRegistry>(() => {
-    const existing = loadRegistry();
-    return migrateOldFormat(existing);
+  const walletKey = address ? address.toLowerCase() : "";
+
+  const factory = factoryAddress(chainId);
+  const factoryConfigured = !!factory;
+
+  const {
+    data: logbookData,
+    isLoading,
+    refetch,
+  } = useReadContract({
+    address: factory,
+    abi: DIVE_LOG_FACTORY_ABI,
+    functionName: "logbookOf",
+    args: [address],
+    query: { enabled: !!factory && !!address },
   });
 
-  const [didMigrate, setDidMigrate] = useState(false);
-  if (!didMigrate && address && chainId) {
-    const existing = loadRegistry();
-    const updated = migrateOldFormat(existing);
-    if (Object.keys(updated).length > 0) {
-      saveRegistry(updated);
-      setRegistry(updated);
+  // Effects only — no setState during render.
+  const factoryLogbook =
+    logbookData && logbookData !== ZERO_ADDRESS ? (logbookData as `0x${string}`) : undefined;
+
+  useEffect(() => {
+    if (factoryConfigured && address && chainId && factoryLogbook) {
+      writeCachedLogbook(address.toLowerCase(), chainId, factoryLogbook);
     }
-    setDidMigrate(true);
-  }
+  }, [factoryConfigured, address, chainId, factoryLogbook]);
 
-  const walletKey = address ? address.toLowerCase() : "";
-  const scopedKey = walletKey && chainId ? scopeKey(walletKey, chainId) : "";
+  const legacyBinding =
+    address && chainId ? readCachedLogbook(address.toLowerCase(), chainId) : undefined;
 
-  // Bind legacy contract to current wallet on Fuji (do this during render, not in effect)
-  if (walletKey && chainId) {
-    const scoped = scopeKey(walletKey, chainId);
-    const legacyKey = `legacy:${chainId}`;
-    const legacyAddr = registry[legacyKey];
-    if (legacyAddr && !registry[scoped]) {
-      const next = { ...registry, [scoped]: legacyAddr };
-      saveRegistry(next);
-      setRegistry(next);
+  const isResolving = factoryConfigured ? isLoading : false;
+
+  const contractAddress = useMemo(() => {
+    if (!address || !chainId) return undefined;
+    if (factoryConfigured) {
+      // Cache is an instant-load hint only; the factory answer is authoritative
+      // (undefined while loading on first visit, then settles).
+      if (isLoading) return legacyBinding;
+      return factoryLogbook;
     }
-  }
+    // No factory on this chain yet: preserve the pre-factory localStorage flow.
+    return readLegacyBinding(address.toLowerCase(), chainId);
+  }, [address, chainId, factoryConfigured, isLoading, factoryLogbook, legacyBinding]);
 
-  const contractAddress: string | undefined = scopedKey ? registry[scopedKey] : undefined;
+  const needsAdoption = useMemo(() => {
+    if (!factoryConfigured || isResolving || !address || !chainId) return undefined;
+    if (factoryLogbook) return undefined;
+    return legacyBinding ?? readLegacyBinding(address.toLowerCase(), chainId);
+  }, [factoryConfigured, isResolving, address, chainId, factoryLogbook, legacyBinding]);
 
-  const setContract = useCallback(
-    (addr: string) => {
-      if (!walletKey || !chainId) return;
-      const key = scopeKey(walletKey, chainId);
-      setRegistry((prev) => {
-        const next = { ...prev, [key]: addr };
-        saveRegistry(next);
-        return next;
-      });
-    },
-    [walletKey, chainId],
+  const dismissAdoption = useCallback(() => {
+    if (address && chainId) clearCachedLogbook(address.toLowerCase(), chainId);
+  }, [address, chainId]);
+
+  const refresh = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  const value = useMemo<DiveContractState>(
+    () => ({
+      contractAddress,
+      hasContract: !!contractAddress,
+      isResolving,
+      factoryConfigured,
+      needsAdoption,
+      dismissAdoption,
+      walletKey,
+      chainId,
+      refresh,
+    }),
+    [
+      contractAddress,
+      isResolving,
+      factoryConfigured,
+      needsAdoption,
+      dismissAdoption,
+      walletKey,
+      chainId,
+      refresh,
+    ],
   );
 
-  const clearContract = useCallback(() => {
-    if (!walletKey || !chainId) return;
-    const key = scopeKey(walletKey, chainId);
-    setRegistry((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      saveRegistry(next);
-      return next;
-    });
-  }, [walletKey, chainId]);
-
-  const hasContract = !!contractAddress;
-
-  return (
-    <DiveContractContext.Provider
-      value={{
-        contractAddress: (contractAddress || undefined) as `0x${string}` | undefined,
-        hasContract,
-        setContract,
-        clearContract,
-        walletKey,
-        chainId,
-      }}
-    >
-      {children}
-    </DiveContractContext.Provider>
-  );
+  return <DiveContractContext.Provider value={value}>{children}</DiveContractContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

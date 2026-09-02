@@ -8,9 +8,12 @@ optimizer_runs = 200
 via_ir = false
 auto_detect_solc = false
 evm_version = "shanghai"
+fs_permissions = [{ access = "read", path = "./" }, { access = "write", path = "./eip712-fixture.json" }]
 
 [fmt]
 line_length = 100
 tab_width = 4
 bracket_spacing = false
 int_types = "long"
+# interfaces/ are verbatim copies of the ERC-8260 reference assets — do not reformat
+skip = ["interfaces/*"]
