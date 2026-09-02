@@ -14,7 +14,7 @@ interface DiveProfileSketchProps {
 
 /**
  * Time-depth profile sketch, drawn from the log entry's times, depths and
- * decompression data — clearly labeled ESTIMATED. When real telemetry (UDDF /
+ * decompression data, clearly labeled ESTIMATED. When real telemetry (UDDF /
  * dive computer samples) lands, this component will render those instead.
  *
  * Y axis is inverted (depth grows downward), X is run time in minutes.

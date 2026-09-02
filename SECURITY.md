@@ -1,3 +1,26 @@
+# Security Policy
+
+## Reporting a vulnerability
+
+**Do not open a public issue for security problems.**
+
+Please use GitHub's private vulnerability reporting:
+
+→ https://github.com/BradMyrick/divechain-pro/security/advisories/new
+
+- **In scope:** the ERC-8260 reference contracts (`deployment/src/`), the
+  deployed `DiveLogFactory` instances, the dApp (`src/`), and the indexer
+  (`indexer/`).
+- **Out of scope:** third-party wallet software, RPC providers, and findings
+  already documented below as accepted trade-offs.
+- We aim to acknowledge reports within 7 days and support coordinated
+  disclosure (90 days or later at the reporter's preference). Note that the
+  deployed contracts are immutable by design — mitigations for contract-level
+  findings will typically ship in the reference implementation and a
+  redeployed factory, not in-place patches.
+
+---
+
 # Security & Scaling Review
 
 Findings from the ERC-8260 / Divechain contract and dApp review (2026-09).

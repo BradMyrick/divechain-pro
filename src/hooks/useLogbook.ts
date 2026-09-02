@@ -81,7 +81,7 @@ export interface LogbookData {
  *  - dives: getMultipleDives in chunks of 100
  *  - void info + attestations: one read per dive
  * Replaces the old per-component hook chain (3 RPCs per dive).
- * Dive IDs are derived 1..count — ERC-8260 guarantees sequential IDs from 1.
+ * Dive IDs are derived 1..count. ERC-8260 guarantees sequential IDs from 1.
  */
 export function useLogbookData(
   address: `0x${string}` | undefined,

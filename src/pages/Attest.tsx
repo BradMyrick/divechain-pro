@@ -151,12 +151,12 @@ export default function Attest() {
 
       {/* Actions */}
       {handoff && !isSuccess ? (
-        /* QR handoff relay mode: a buddy already signed — anyone records it. */
+        /* QR handoff relay mode: a buddy already signed,anyone records it. */
         <div className="glass-card hairline p-5 mb-4 border-kelp/20">
           <div className="section-title"><QrCode className="w-4 h-4" /> Signed attestation handed to you</div>
           <p className="text-xs text-text-secondary mb-4 leading-relaxed">
             A buddy has cryptographically signed this attestation. Recording it on-chain costs a
-            fraction of a cent — your wallet pays the gas, the diver gets the credit.
+            fraction of a cent. Your wallet pays the gas, the diver gets the credit.
           </p>
           <div className="glass-card-inner p-3 mb-3 border-kelp/20 flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-kelp shrink-0" />
@@ -211,7 +211,7 @@ export default function Attest() {
             <div className="glass-card hairline p-5 text-center">
               <p className="text-xs font-semibold text-white mb-1">Let the diver scan this</p>
               <p className="text-[11px] text-text-tertiary mb-4">
-                They record the attestation with their next transaction — you pay nothing.
+                They record the attestation with their next transaction,you pay nothing.
               </p>
               {handoffUrl ? (
                 <>

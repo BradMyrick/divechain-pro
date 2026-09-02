@@ -42,7 +42,7 @@ describe("EIP-712 TS <-> Solidity cross-check", () => {
   });
 
   it("documents the malleability guard: the (flipped-v, n−s) twin is what the contract rejects", async () => {
-    // secp256k1n / 2 — the contract's EIP-2 bound (SovereignDiveLog._HALF_N)
+    // secp256k1n / 2 ,the contract's EIP-2 bound (SovereignDiveLog._HALF_N)
     const halfN = BigInt("0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0");
     const n = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
     const sLow = BigInt(fx.s);
@@ -53,7 +53,7 @@ describe("EIP-712 TS <-> Solidity cross-check", () => {
         ("0x" + sHigh.toString(16).padStart(64, "0")).slice(2) +
         vFlipped.toString(16).padStart(2, "0")) as `0x${string}`;
 
-    // Raw ECDSA recovery accepts the twin (same address) — that's malleability.
+    // Raw ECDSA recovery accepts the twin (same address) ,that's malleability.
     await expect(
       verifyTypedData({ ...typedData, address: fx.attester, signature: malleated } as never),
     ).resolves.toBe(true);

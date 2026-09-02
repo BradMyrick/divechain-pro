@@ -129,7 +129,7 @@ export default function Profile() {
               <Link2 className={`w-4 h-4 ${factoryConfigured ? "text-surf" : "text-warn"}`} />
               <p className="text-xs text-text-secondary">
                 {factoryConfigured
-                  ? "Registered on-chain with the DiveLogFactory — any device finds this logbook automatically."
+                  ? "Registered on-chain with the DiveLogFactory, any device finds this logbook automatically."
                   : "Bound locally (no factory deployed on this chain yet)."}
               </p>
             </div>
@@ -197,8 +197,8 @@ export default function Profile() {
           <AlphaFlag className="w-8 h-auto" />
         </div>
         <p className="text-xs text-text-tertiary leading-relaxed">
-          Your public profile splits bottom time under the two flags — recreational (Diver Down) and
-          commercial / surface-supplied (Alpha) — so dive shops and employers see the career they care about.
+          Your public profile splits bottom time under the two flags, recreational (Diver Down) and
+          commercial / surface-supplied (Alpha). So dive shops and employers see the career they care about.
         </p>
       </div>
 

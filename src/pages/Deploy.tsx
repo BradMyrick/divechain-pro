@@ -95,7 +95,7 @@ export default function Deploy() {
         <h1 className="text-3xl sm:text-4xl font-bold gradient-text mb-3">Claim your logbook</h1>
         <p className="text-sm sm:text-base text-text-secondary max-w-md mx-auto">
           One transaction creates your personal <span className="text-surf font-medium">SovereignDiveLog</span> on
-          Avalanche and registers it on-chain — every device, browser and wallet finds it from now on.
+          Avalanche and registers it on-chain. Every device, browser and wallet finds it from now on.
           Your wallet is the only key.
         </p>
       </div>
@@ -227,7 +227,7 @@ export default function Deploy() {
             ) : isConfirming ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Raising your flag on Avalanche…</>
             ) : claimed ? (
-              <><Check className="w-4 h-4" /> Claimed — opening logbook…</>
+              <><Check className="w-4 h-4" /> Claimed, opening logbook…</>
             ) : (
               <><Anchor className="w-4 h-4" /> Claim my logbook</>
             )}

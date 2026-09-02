@@ -159,7 +159,22 @@ secret). Create one at [cloud.reown.com](https://cloud.reown.com).
 The `DiveLogFactory` is deployed once per network (see
 [`deployment/README.md`](./deployment/README.md) for current addresses).
 
+## Source & deployments
+
+This repository is the complete product: dApp, contracts, tests, indexer. The
+`DiveLogFactory` contracts below were deployed from this exact source tree and
+verified **byte-identical** to this repository's compilation (direct
+`eth_getCode` comparison — see [`deployment/README.md`](./deployment/README.md)):
+
+| Network | Chain ID | DiveLogFactory |
+| --- | --- | --- |
+| Avalanche C-Chain | 43114 | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
+| Avalanche Fuji | 43113 | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
+
+What you deploy is what you read — no unaudited bytecode in between.
+
 ## License
 
-Source published for review. **All rights reserved.** See the deployable ERC-8260
-reference contract under [`deployment/`](./deployment/README.md).
+**MIT** for this application, the indexer, and tooling — see [LICENSE](./LICENSE).
+The ERC-8260 reference contracts under [`deployment/`](./deployment/README.md)
+are **CC0-1.0** (public domain), as the standard requires.

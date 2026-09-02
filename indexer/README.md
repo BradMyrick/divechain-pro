@@ -3,7 +3,7 @@
 Lightweight event indexer for the DiveLogFactory + ERC-8260 logbook ecosystem.
 Polls `Logbook*` registry events and per-logbook `Dive*` events, aggregates
 them, and writes a small JSON snapshot (`out/data.json`) suitable for serving
-the Community/Explore pages and global stats — no external indexing service
+the Community/Explore pages and global stats ,no external indexing service
 required.
 
 ## Why a poller (for now)
@@ -11,7 +11,7 @@ required.
 Zero framework lock-in, fully self-verifiable offline (`verify:anvil` boots a
 local foundry chain, exercises the whole flow, and asserts the output). When
 the ecosystem outgrows polling (tens of thousands of logbooks, sub-second
-freshness), graduate to Ponder or a subgraph — the event contract surface is
+freshness), graduate to Ponder or a subgraph ,the event contract surface is
 identical, so the migration is config, not redesign.
 
 ## Run
@@ -51,7 +51,7 @@ npm run verify:anvil
 
 Boots `anvil`, deploys the factory, claims two logbooks, logs a dive, signs +
 relays an EIP-712 attestation, releases one logbook, runs an indexing pass and
-asserts every field. Exits non-zero on any mismatch — usable directly in CI.
+asserts every field. Exits non-zero on any mismatch ,usable directly in CI.
 
 ## Hosting notes
 

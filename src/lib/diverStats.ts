@@ -132,7 +132,7 @@ export function formatMinutes(total: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-/** Attester quality tier — on-chain reputation from their own logbook, when known. */
+/** Attester quality tier, on-chain reputation from their own logbook, when known. */
 export interface AttesterBadge {
   label: string;
   detail: string;

@@ -278,7 +278,7 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
               <p className="text-xs font-semibold text-white">Ask your buddy to sign this dive</p>
             </div>
             <p className="text-[11px] text-text-tertiary mb-3 leading-snug">
-              They scan the QR, sign an EIP-712 message on their own wallet — free, no gas — and the
+              They scan the QR, sign an EIP-712 message on their own wallet. Free, no gas, and the
               attestation is recorded on-chain. Works between phones, even mid-boat.
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -291,7 +291,7 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
                   </button>
                 </div>
                 <p className="text-[10px] text-text-tertiary mt-2">
-                  Signed attestations can also be relayed by anyone — including you with your next entry.
+                  Signed attestations can also be relayed by anyone. Including you with your next entry.
                 </p>
               </div>
             </div>

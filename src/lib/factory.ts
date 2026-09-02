@@ -76,7 +76,7 @@ export function writeCachedLogbook(
     registry[`${chainId}:${wallet}`] = logbook;
     window.localStorage.setItem(FACTORY_CACHE_KEY, JSON.stringify(registry));
   } catch {
-    /* localStorage unavailable — cache is best-effort only */
+    /* localStorage unavailable. Cache is best-effort only */
   }
 }
 

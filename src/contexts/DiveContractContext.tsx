@@ -21,7 +21,7 @@ interface DiveContractState {
   factoryConfigured: boolean;
   /**
    * A logbook binding known locally (legacy registry or cache) that the factory
-   * does not know about — offer a one-click adoptLogbook() migration.
+   * does not know about ,offer a one-click adoptLogbook() migration.
    */
   needsAdoption: `0x${string}` | undefined;
   /** Dismiss the adoption prompt for this session. */
@@ -38,10 +38,10 @@ const DiveContractContext = createContext<DiveContractState>({
   isResolving: false,
   factoryConfigured: false,
   needsAdoption: undefined,
-  dismissAdoption: () => {},
+  dismissAdoption: () => { },
   walletKey: "",
   chainId: undefined,
-  refresh: () => {},
+  refresh: () => { },
 });
 
 export function DiveContractProvider({ children }: { children: ReactNode }) {
@@ -63,7 +63,7 @@ export function DiveContractProvider({ children }: { children: ReactNode }) {
     query: { enabled: !!factory && !!address },
   });
 
-  // Effects only — no setState during render.
+  // Effects only ,no setState during render.
   const factoryLogbook =
     logbookData && logbookData !== ZERO_ADDRESS ? (logbookData as `0x${string}`) : undefined;
 

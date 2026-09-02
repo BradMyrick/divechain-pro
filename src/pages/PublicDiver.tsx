@@ -56,7 +56,7 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
   const chainId = demo
     ? 43114
     : ensQuery.data?.chainId
-      ?? (chainParam || 43114);
+    ?? (chainParam || 43114);
 
   // Direct contract override beats the registry
   const factory = factoryAddress(chainId);
@@ -77,12 +77,12 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
   const logbook: `0x${string}` | undefined = demo
     ? ("0x4E1aD5c09b5E6A7f3D2C8b9A0e6D5c4b3A2F1e0D" as `0x${string}`)
     : ensQuery.data?.logbook
-      ?? (factoryLogbook && factoryLogbook !== "0x0000000000000000000000000000000000000000"
-        ? (factoryLogbook as `0x${string}`)
-        : undefined)
-      ?? (directContract && directContract.startsWith("0x") && directContract.length === 42
-        ? (directContract as `0x${string}`)
-        : undefined);
+    ?? (factoryLogbook && factoryLogbook !== "0x0000000000000000000000000000000000000000"
+      ? (factoryLogbook as `0x${string}`)
+      : undefined)
+    ?? (directContract && directContract.startsWith("0x") && directContract.length === 42
+      ? (directContract as `0x${string}`)
+      : undefined);
 
   const data = useLogbookData(demo ? undefined : logbook, { demo });
   const stats = useMemo(() => computeDiverStats(data.dives), [data.dives]);
@@ -119,7 +119,7 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
         <p className="text-xs text-text-tertiary max-w-sm mb-6">
           {isName
             ? `The ENS name doesn't set an erc8260 text record, or it points to a chain without a deployed DiveLogFactory.`
-            : `This wallet has no registered ERC-8260 logbook on ${CHAIN_NAMES[chainId] ?? `chain ${chainId}`} — they may dive under a different flag elsewhere.`}
+            : `This wallet has no registered ERC-8260 logbook on ${CHAIN_NAMES[chainId] ?? `chain ${chainId}`}, they may dive under a different flag elsewhere.`}
         </p>
         <Link to="/" className="btn-primary">Go home</Link>
       </Center>
@@ -138,7 +138,7 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
         <div className="glass-card-inner p-4 mb-4 border-surf/25 flex flex-col sm:flex-row items-center gap-3">
           <DivechainMark className="w-10 h-auto shrink-0" />
           <p className="text-xs text-text-secondary flex-1 text-center sm:text-left">
-            <span className="text-surf font-semibold">Demo logbook.</span> Synthetic data — recreational
+            <span className="text-surf font-semibold">Demo logbook.</span> Synthetic data, recreational
             and commercial records, a corrected (voided) entry, and buddy attestations. No wallet needed.
           </p>
           <button onClick={() => navigate("/deploy")} className="btn-primary text-sm px-4 py-2 shrink-0">
@@ -187,7 +187,7 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
               </div>
             </div>
             <p className="text-[11px] text-text-tertiary mt-3 max-w-lg">
-              Every stat below is read from the diver's sovereign ERC-8260 contract — no login, no
+              Every stat below is read from the diver's sovereign ERC-8260 contract. No login, no
               database, no third party. Attestations are EIP-712 signatures verified by the contract itself.
             </p>
           </div>
@@ -243,7 +243,7 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
         <div className="glass-card hairline p-5 flex flex-col items-center justify-center">
           <QRCode value={shareUrl} size={150} />
           <p className="text-[10px] text-text-tertiary mt-2 text-center max-w-[160px]">
-            Show this to a dive shop or employer — they verify without an account
+            Show this to a dive shop or employer, they verify without an account
           </p>
           <CopyUrl url={shareUrl} />
         </div>
@@ -301,7 +301,7 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
       </div>
 
       <p className="text-[11px] text-text-tertiary text-center pb-4">
-        Dive data is public by design — this page is a friendly view over an open blockchain.
+        Dive data is public by design. This page is a friendly view over an open blockchain.
         ERC-8260 stores no personal identifying information.
       </p>
     </div>
@@ -404,7 +404,7 @@ function DiveRow({ dive, demo, chainId }: { dive: NormalizedDive; demo: boolean;
           {isVoided && dive.voidInfo && (
             <div className="glass-card-inner p-3 border-danger/20 text-[11px] text-text-secondary space-y-1">
               <p className="text-danger font-medium flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> Voided entry — full audit trail preserved
+                <AlertTriangle className="w-3.5 h-3.5" /> Voided entry, full audit trail preserved
               </p>
               <p>Reason: {dive.voidInfo.reason}</p>
               {dive.voidInfo.supersededById > 0n && (

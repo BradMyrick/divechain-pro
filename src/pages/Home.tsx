@@ -405,7 +405,7 @@ export default function Home() {
             Every dive on the water has a flag. So does every dive in your logbook.
           </h2>
           <p className="text-sm sm:text-base text-text-secondary max-w-2xl mx-auto">
-            The same two signals you fly from the boat live in your ERC-8260 logbook — so a weekend
+            The same two signals you fly from the boat live in your ERC-8260 logbook. So a weekend
             reef diver and a saturation welder keep one permanent, verifiable record.
           </p>
         </div>
@@ -413,19 +413,19 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="glass-card hairline p-5 sm:p-6 animate-slide-up">
             <DiverDownFlag className="w-24 h-auto rounded-sm mb-4 shadow-md shadow-flag-red/20" />
-            <h3 className="text-lg font-semibold text-white mb-2">Diver Down — recreational</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">Diver Down</h3>
             <p className="text-sm text-text-secondary leading-relaxed">
-              The red flag with the white stripe: a diver down, keep clear. Recreational dives —
-              reefs, wrecks, drifts, photo hunts — carry the Diver Down mark on every entry.
+              The red with a white stripe: recreational, training, and sport dives. Open-circuit and
+              rebreather. Fly Diver Down, and your open-circuit and rebreather dives are
+              tracked separately on your public profile.
             </p>
           </div>
           <div className="glass-card hairline p-5 sm:p-6 animate-slide-up animate-delay-1">
             <AlphaFlag className="w-24 h-auto mb-4 shadow-md shadow-alpha-blue/20" />
-            <h3 className="text-lg font-semibold text-white mb-2">Alpha — commercial</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">Alpha</h3>
             <p className="text-sm text-text-secondary leading-relaxed">
-              The blue-and-white swallowtail: divers down, slow past. Surface-supplied and working
-              dives — inspection, salvage, welding, EOD — fly Alpha, and surface-supplied time is
-              tracked separately on your public profile.
+              The blue-and-white swallowtail: commercial, military, and saturation dives.
+              Fly Alpha, and your commercial dives are tracked separately on your public profile.
             </p>
           </div>
         </div>

@@ -77,7 +77,7 @@ export interface SignatureHandoff {
   signature: `0x${string}`;
 }
 
-/** A signed attestation handed to another device — the diver (or anyone) relays it. */
+/** A signed attestation handed to another device, the diver (or anyone) relays it. */
 export function buildSignatureHandoffUrl(
   req: AttestationRequest,
   nonce: bigint,

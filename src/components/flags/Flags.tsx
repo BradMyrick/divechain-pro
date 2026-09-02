@@ -1,9 +1,9 @@
-// Hand-authored SVG dive flags — the two international diver signals.
+// Hand-authored SVG dive flags ,the two international diver signals.
 //
 // Diver Down (recreational): red field, white diagonal stripe from the top of
-//   the hoist to the bottom of the fly — "I have a diver down; keep clear."
+//   the hoist to the bottom of the fly ,"I have a diver down; keep clear."
 // Alpha (commercial / surface-supplied): swallowtailed flag divided diagonally,
-//   white above, blue below — "I have a diver down; keep well clear at slow
+//   white above, blue below ,"I have a diver down; keep well clear at slow
 //   speed." Flown by vessels conducting commercial, military and SSA operations.
 
 export interface FlagProps {
@@ -11,7 +11,7 @@ export interface FlagProps {
   title?: string;
 }
 
-/** Fixed 3:2 ratio. Stroke/geometry numbers are deliberate — see file header. */
+/** Fixed 3:2 ratio. Stroke/geometry numbers are deliberate ,see file header. */
 export function DiverDownFlag({ className, title = "Diver Down flag" }: FlagProps) {
   return (
     <svg
@@ -44,7 +44,7 @@ export function AlphaFlag({ className, title = "Alpha flag" }: FlagProps) {
 }
 
 /**
- * Divechain brand mark — the two pennants flying together: recreational and
+ * Divechain brand mark ,the two pennants flying together: recreational and
  * commercial divers, one standard (ERC-8260). "Two flags, one logbook."
  */
 export function DivechainMark({ className, title = "Divechain" }: FlagProps) {
