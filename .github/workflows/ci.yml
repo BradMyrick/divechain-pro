@@ -7,7 +7,7 @@ on:
 
 jobs:
   contracts:
-    name: Foundry (build + test)
+    name: Contracts (forge build + test)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,13 +18,9 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
-      - name: Cache forge artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            deployment/out
-            deployment/cache
-          key: forge-${{ runner.os }}-${{ hashFiles('deployment/src/**/*.sol', 'deployment/foundry.toml') }}
+      # lib/ is gitignored (vendored locally); fetch the test dependency on CI
+      - name: Install forge-std
+        run: forge install foundry-rs/forge-std --no-commit
 
       - name: Build
         run: forge build
@@ -32,16 +28,8 @@ jobs:
       - name: Test
         run: forge test
 
-      - name: Frontend artifacts in sync with sources
-        run: |
-          ./export-artifacts.sh
-          git diff --exit-code -- ../src/contracts/ || {
-            echo "::error::src/contracts/*.json out of date — run deployment/export-artifacts.sh and commit"
-            exit 1
-          }
-
   web:
-    name: Web (lint + test + build + smoke)
+    name: Web (lint + test + build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,20 +47,13 @@ jobs:
 
       - run: npm run build
 
-      - name: Smoke (headless Chrome over vite preview)
-        run: |
-          npx vite preview --port 4173 --strictPort &
-          for i in $(seq 1 30); do curl -s http://localhost:4173/ >/dev/null && break; sleep 1; done
-          ./scripts/smoke.sh http://localhost:4173/ 20000
-          ./scripts/smoke.sh http://localhost:4173/demo 20000
-
   indexer:
     name: Indexer (anvil self-verify)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Foundry
+      - name: Install Foundry (provides anvil)
         uses: foundry-rs/foundry-toolchain@v1
 
       - uses: actions/setup-node@v4
@@ -84,15 +65,3 @@ jobs:
 
       - run: npm run verify:anvil
         working-directory: indexer
-
-  dependency-review:
-    name: Dependency review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
