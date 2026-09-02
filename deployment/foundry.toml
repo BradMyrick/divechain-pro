@@ -19,5 +19,5 @@ line_length = 100
 tab_width = 4
 bracket_spacing = false
 int_types = "long"
-# interfaces/ are verbatim copies of the ERC-8260 reference assets — do not reformat
-skip = ["interfaces/*"]
+# interfaces/ are verbatim ERC-8260 reference assets — do not reformat them.
+# When formatting locally, run:  forge fmt --skip "interfaces/*"

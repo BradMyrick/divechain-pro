@@ -79,6 +79,9 @@ The `interfaces/` directory is byte-identical to the ERC assets (excluded from
 ## Setup
 
 ```bash
+# forge-std lives in deployment/lib/ (gitignored) — fetch it on a fresh clone
+forge install foundry-rs/forge-std --no-commit
+
 cp .env.example .env   # fill PRIVATE_KEY
 source .env
 forge build
