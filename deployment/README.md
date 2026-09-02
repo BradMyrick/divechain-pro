@@ -85,6 +85,11 @@ forge build
 forge test
 ```
 
+> Compiler: solc **0.8.34**, `evm_version = cancun`, optimizer 200 runs —
+> verified to reproduce the deployed factory bytecode byte-for-byte. Avalanche
+> has supported Cancun since the Durango upgrade (Feb 2024). Sources remain
+> `pragma ^0.8.20`, so upstream (PR #1735) is unaffected by this toolchain pin.
+
 ## Deploy the factory
 
 ```bash
@@ -131,10 +136,13 @@ from the contract itself:
 
 | Network | Chain ID | Contract | Address |
 | --- | --- | --- | --- |
-| Fuji | 43113 | DiveLogFactory | _pending_ |
+| Fuji | 43113 | DiveLogFactory | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
+| C-Chain | 43114 | DiveLogFactory | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
 | Fuji | 43113 | SovereignDiveLog (legacy, pre-factory) | `0x5adf6d5150a62d67fa1a18ac7dde8fcbad392565` |
-| C-Chain | 43114 | DiveLogFactory | _pending_ |
 
-> The legacy Fuji `SovereignDiveLog` (and any logbook deployed directly from
-> the dApp before the factory ships) remains fully usable: its owner registers
-> it once via `adoptLogbook`.
+> Both factories were deployed via Avalanche Builders Hub from
+> `flattened/DiveLogFactory.flattened.sol` and verified byte-identical to this
+> repo's compilation (solc 0.8.34 / cancun / optimizer 200) by direct
+> `eth_getCode` comparison. The legacy Fuji `SovereignDiveLog` (and any logbook
+> deployed directly from the dApp before the factories) remains fully usable —
+> its owner registers it once via `adoptLogbook`.

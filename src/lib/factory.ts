@@ -8,14 +8,20 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
  * Per-chain DiveLogFactory deployments. The factory maps wallet → logbook
  * on-chain, replacing localStorage binding.
  *
- * Fuji/Mainnet: fill in after `forge script script/Deploy.s.sol` (see
- * deployment/README.md). Anvil: the first default-foundry deployer account
- * (0xf39F...) always lands at this address for nonce 0.
+ * These are compile-time constants ON PURPOSE, not env vars: contract
+ * addresses are public immutable facts (no confidentiality), and keeping them
+ * in reviewed, CI-tested code means the logbook-resolution path can only
+ * change via commit — never via a mutable deployment variable. Changing a
+ * deployment = code change + full verification (see deployment/README.md).
+ *
+ * Both live deployments verified byte-identical to this repo's compilation
+ * (solc 0.8.34 / cancun / optimizer 200) — see deployment/foundry.toml.
+ * Anvil: the first default-foundry deployer account address (nonce 0).
  */
 export const FACTORY_ADDRESSES: Record<number, `0x${string}`> = {
   31337: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-  43113: ZERO_ADDRESS, // TODO: set after Builders Hub deployment
-  43114: ZERO_ADDRESS, // TODO: set after C-Chain deployment
+  43113: "0x921dc74BA049748BdFeE471F641f48688aDF8b49",
+  43114: "0x3894070DDdA804f9ba96116c9bd810eF745f5999",
 };
 
 export function factoryAddress(chainId: number | undefined): `0x${string}` | undefined {
