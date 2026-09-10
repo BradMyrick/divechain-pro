@@ -51,6 +51,12 @@ export default function SitesGlobe({
   const [globeReady, setGlobeReady] = useState(false);
 
   useEffect(() => {
+    if (import.meta.env.DEV && globeRef.current) {
+      (window as unknown as Record<string, unknown>).__sitesGlobe = globeRef.current;
+    }
+  });
+
+  useEffect(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
     const observer = new ResizeObserver(() => {
