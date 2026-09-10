@@ -73,7 +73,7 @@ type, decompression, and EIP-712 buddy attestations.
 ## App overview
 
 The dApp is a React single-page application with wallet connection (RainbowKit / wagmi),
-on-chain read/write (viem), a dive-site map (react-leaflet), dive analytics, QR buddy
+on-chain read/write (viem), a 3D dive-site globe (react-globe.gl), dive analytics, QR buddy
 attestations, public diver profiles, PDF paperwork exports, and a wallet-free demo mode.
 The dive tools are pure client-side math from public-domain sources (U.S. Navy / NOAA
 no-decompression tables, NOAA oxygen limits, DAN flying guidance) — no accounts, no
@@ -103,7 +103,8 @@ flags, one logbook.
 - **wagmi** + **viem** for Ethereum/Avalanche interaction
 - **RainbowKit** for wallet connection (graceful fallback without a project id)
 - **Tailwind CSS v4** for styling; self-hosted Barlow Condensed / Inter / JetBrains Mono
-- **react-leaflet** for maps; hand-rolled SVG dive profiles
+- **react-globe.gl** (three.js) for the 3D dive-site globe — NASA Blue Marble texture
+  self-hosted (`public/globe/`), lazy-loaded so it never touches first paint
 - **jspdf** (lazy-loaded) for paperwork exports; **qrcode** for attest/profile QR
 - **vitest** unit + cross-chain tests; headless-browser smoke checks
 - `indexer/` - self-verifying viem event indexer (see [indexer/README.md](./indexer/README.md))

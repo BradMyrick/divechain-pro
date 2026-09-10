@@ -1,8 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import {
   Anchor, Building2, Waves, Thermometer, Eye, Calendar,
   Gauge, Globe, Search, ExternalLink, Star, X, Link2, Check,
@@ -15,21 +12,7 @@ import { DIVE_SHOPS, type DiveShop } from "../data/diveShops";
 import SiteConditions from "../components/SiteConditions";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 
-const SITE_ICON = L.divIcon({
-  html: `<div style="width:24px;height:24px;border-radius:50%;background:rgba(34,211,238,0.9);border:3px solid #0d9488;box-shadow:0 0 16px rgba(34,211,238,0.6);display:flex;align-items:center;justify-content:center;font-size:10px">&#x2B07;</div>`,
-  className: "",
-  iconSize: [24, 24],
-  iconAnchor: [12, 24],
-  popupAnchor: [0, -28],
-});
-
-const SHOP_ICON = L.divIcon({
-  html: `<div style="width:28px;height:28px;border-radius:6px;background:#0d9488;border:2px solid #22d3ee;box-shadow:0 0 12px rgba(13,148,136,0.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">&#x2693;</div>`,
-  className: "",
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  popupAnchor: [0, -28],
-});
+const SitesGlobe = lazy(() => import("../components/SitesGlobe"));
 
 const DIFFICULTY_RANK: Record<Difficulty, number> = {
   Beginner: 0, Intermediate: 1, Advanced: 2, Technical: 3,
@@ -48,46 +31,6 @@ const SORTS: [SortKey, string][] = [
   ["difficulty", "Easiest first"],
 ];
 
-function FlyTo({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo([lat, lng], 12, { duration: 1.2 });
-  }, [lat, lng, map]);
-  return null;
-}
-
-/**
- * Keyless basemap providers. Esri World Imagery (satellite — reefs and atolls
- * are visible), the Esri Ocean basemap (bathymetry), and OpenStreetMap.
- */
-type BasemapKey = "satellite" | "ocean" | "street";
-
-const BASEMAPS: Record<
-  BasemapKey,
-  { label: string; url: string; attribution: string; maxNativeZoom: number; dim?: boolean }
-> = {
-  satellite: {
-    label: "Satellite",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution:
-      "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-    maxNativeZoom: 19,
-  },
-  ocean: {
-    label: "Ocean",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles &copy; Esri &mdash; Source: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri",
-    maxNativeZoom: 13,
-  },
-  street: {
-    label: "Street",
-    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxNativeZoom: 19,
-    dim: true,
-  },
-};
-
 export default function DiveSites() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedSite, setSelectedSite] = useState<DiveSite | null>(() => {
@@ -103,9 +46,7 @@ export default function DiveSites() {
   const [difficultyFilters, setDifficultyFilters] = useState<Difficulty[]>([]);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favorites, setFavorites] = useLocalStorage<string[]>("dc_fav_sites", []);
-  const [basemapKey, setBasemapKey] = useState<BasemapKey>("satellite");
   const [copied, setCopied] = useState(false);
-  const mapRef = useRef<L.Map | null>(null);
 
   const presentTypes = useMemo(
     () => SITE_TYPE_ORDER.filter((t) => DIVE_SITES.some((s) => s.types.includes(t))),
@@ -435,69 +376,21 @@ export default function DiveSites() {
         </div>
 
         <div className="flex-1 relative min-h-[58vh] lg:min-h-0 order-1 lg:order-2">
-          <MapContainer
-            center={[15, -50]}
-            zoom={3}
-            minZoom={2}
-            maxZoom={16}
-            style={{ height: "100%", width: "100%", background: "#040b14" }}
-            zoomControl={false}
-            ref={mapRef}
+          <Suspense
+            fallback={
+              <div className="absolute inset-0 bg-abyss flex items-center justify-center">
+                <p className="text-xs text-text-tertiary animate-pulse">Spinning up the globe…</p>
+              </div>
+            }
           >
-            <TileLayer
-              key={basemapKey}
-              url={BASEMAPS[basemapKey].url}
-              attribution={BASEMAPS[basemapKey].attribution}
-              maxNativeZoom={BASEMAPS[basemapKey].maxNativeZoom}
-              maxZoom={16}
-              className={BASEMAPS[basemapKey].dim ? "basemap-dim" : undefined}
+            <SitesGlobe
+              sites={activeTab === "sites" ? filteredSites : []}
+              shops={activeTab === "shops" ? filteredShops : []}
+              selectedSite={selectedSite}
+              onSelectSite={(site) => selectSite(site)}
+              onSelectShop={(shop) => { setSelectedShop(shop); selectSite(null); }}
             />
-            {activeTab === "sites" && filteredSites.map((site) => (
-              <Marker
-                key={site.id}
-                position={[site.lat, site.lng]}
-                icon={SITE_ICON}
-                eventHandlers={{ click: () => selectSite(site) }}
-              />
-            ))}
-            {activeTab === "shops" && filteredShops.map((shop) => (
-              <Marker
-                key={shop.id}
-                position={[shop.lat, shop.lng]}
-                icon={SHOP_ICON}
-                eventHandlers={{ click: () => { setSelectedShop(shop); selectSite(null); } }}
-              />
-            ))}
-            {(selectedSite || selectedShop) && (
-              <FlyTo lat={selectedSite?.lat ?? selectedShop!.lat} lng={selectedSite?.lng ?? selectedShop!.lng} />
-            )}
-          </MapContainer>
-
-          <div className="absolute top-3 right-3 z-[1000] flex gap-1 bg-card/80 backdrop-blur-sm p-1 rounded-lg border border-card-border">
-            {(Object.keys(BASEMAPS) as BasemapKey[]).map((key) => (
-              <button
-                key={key}
-                onClick={() => setBasemapKey(key)}
-                className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-all touch-manipulation ${
-                  basemapKey === key
-                    ? "bg-surf/15 text-surf border border-surf/25"
-                    : "text-text-secondary border border-transparent hover:text-gray-200"
-                }`}
-                title={`${BASEMAPS[key].label} basemap`}
-              >
-                {BASEMAPS[key].label}
-              </button>
-            ))}
-          </div>
-
-          <div className="absolute bottom-3 right-3 z-[1000] flex flex-col gap-1.5">
-            <div className="flex items-center gap-1.5 text-[10px] text-text-secondary bg-card/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-card-border">
-              <span className="w-2.5 h-2.5 rounded-full bg-surf/90 border border-teal inline-block" /> Sites
-            </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-text-secondary bg-card/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-card-border">
-              <span className="w-2.5 h-2.5 rounded bg-teal border border-surf inline-block" /> Shops
-            </div>
-          </div>
+          </Suspense>
         </div>
       </div>
     </div>
