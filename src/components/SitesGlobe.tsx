@@ -47,6 +47,7 @@ export default function SitesGlobe({
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const htmlPins = useRef(new Map<string, HtmlPin>());
+  const firstSelection = useRef(true);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [globeReady, setGlobeReady] = useState(false);
 
@@ -154,6 +155,10 @@ export default function SitesGlobe({
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe || !globeReady) return;
+    if (firstSelection.current) {
+      firstSelection.current = false;
+      if (selectedSite) return;
+    }
     if (selectedSite) {
       globe.pointOfView(
         { lat: selectedSite.lat, lng: selectedSite.lng, altitude: DETAIL_ALTITUDE },
