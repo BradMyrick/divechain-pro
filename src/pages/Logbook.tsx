@@ -29,7 +29,7 @@ export default function Logbook() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 -mx-3 sm:-mx-6 lg:-mx-8 -mt-1 -mb-4 sm:-mt-2 sm:-mb-6 lg:-mt-4 lg:-mb-8">
+    <div className="flex flex-col h-full min-h-0 -mx-3 sm:-mx-6 lg:-mx-8 -mt-1 -mb-4 sm:-mt-2 sm:-mb-6 lg:-mt-4 lg:-mb-8">
       <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 shrink-0 gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-white flex items-center gap-2">Logbook</h1>
