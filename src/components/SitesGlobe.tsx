@@ -12,6 +12,7 @@ interface PinDatum {
   lng: number;
   color: string;
   radius: number;
+  altitude: number;
   site?: DiveSite;
   shop?: DiveShop;
 }
@@ -51,7 +52,8 @@ export default function SitesGlobe({
           lat: s.lat,
           lng: s.lng,
           color: selectedSite?.id === s.id ? SITE_SELECTED : SITE_COLOR,
-          radius: selectedSite?.id === s.id ? 0.45 : 0.28,
+          radius: selectedSite?.id === s.id ? 0.24 : 0.11,
+          altitude: selectedSite?.id === s.id ? 0.68 : 0.42,
           site: s,
         }),
       ),
@@ -60,7 +62,8 @@ export default function SitesGlobe({
           lat: s.lat,
           lng: s.lng,
           color: SHOP_COLOR,
-          radius: 0.34,
+          radius: 0.13,
+          altitude: 0.32,
           shop: s,
         }),
       ),
@@ -87,15 +90,16 @@ export default function SitesGlobe({
           atmosphereColor="#22d3ee"
           atmosphereAltitude={0.17}
           onGlobeReady={() => {
-            globeRef.current?.pointOfView({ lat: 15, lng: -60, altitude: 1.5 }, 0);
+            globeRef.current?.pointOfView({ lat: 15, lng: -55, altitude: 2.6 }, 0);
           }}
           pointsData={pins}
           pointLat={(d: object) => (d as PinDatum).lat}
           pointLng={(d: object) => (d as PinDatum).lng}
           pointColor={(d: object) => (d as PinDatum).color}
           pointRadius={(d: object) => (d as PinDatum).radius}
-          pointAltitude={0.012}
-          pointsTransitionDuration={200}
+          pointAltitude={(d: object) => (d as PinDatum).altitude}
+          pointResolution={10}
+          pointsTransitionDuration={350}
           onPointClick={(d: object) => {
             const pin = d as PinDatum;
             if (pin.site) onSelectSite(pin.site);
