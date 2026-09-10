@@ -7,8 +7,9 @@ const SITE_COLOR = "#22d3ee";
 const SITE_SELECTED = "#f5c542";
 const SHOP_COLOR = "#14b8a6";
 const BROWSE_ALTITUDE = 2.6;
-const DETAIL_ALTITUDE = 1.35;
 const RAD = Math.PI / 180;
+
+console.info("[divechain] globe r6 - camera is fully manual, no auto-zoom exists");
 
 const PIN_SVG = (color: string, filled: boolean) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="${filled ? color : "none"}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>${filled ? `<circle cx="12" cy="10" r="2.6" fill="#04121c"/>` : `<circle cx="12" cy="10" r="3"/>`}</svg>`;
@@ -47,7 +48,6 @@ export default function SitesGlobe({
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const htmlPins = useRef(new Map<string, HtmlPin>());
-  const firstSelection = useRef(true);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [globeReady, setGlobeReady] = useState(false);
 
@@ -151,24 +151,6 @@ export default function SitesGlobe({
     updateOcclusion();
     return () => controls.removeEventListener("change", updateOcclusion);
   }, [globeReady]);
-
-  useEffect(() => {
-    const globe = globeRef.current;
-    if (!globe || !globeReady) return;
-    if (firstSelection.current) {
-      firstSelection.current = false;
-      if (selectedSite) return;
-    }
-    if (selectedSite) {
-      globe.pointOfView(
-        { lat: selectedSite.lat, lng: selectedSite.lng, altitude: DETAIL_ALTITUDE },
-        800,
-      );
-    } else {
-      const pov = globe.pointOfView() as { lat: number; lng: number };
-      globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: BROWSE_ALTITUDE }, 650);
-    }
-  }, [selectedSite, globeReady]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 bg-abyss">
