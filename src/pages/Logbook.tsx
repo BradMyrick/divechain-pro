@@ -101,12 +101,12 @@ export default function Logbook() {
           <Drawer.Content
             className={`fixed z-50 bg-card border-card-border outline-none ${
               isDesktop
-                ? "right-0 top-0 bottom-0 w-[min(560px,92vw)] border-l rounded-l-2xl"
-                : "left-0 right-0 bottom-0 max-h-[88dvh] border-t rounded-t-2xl"
+                ? "right-0 top-0 bottom-0 w-[min(920px,80vw)] border-l rounded-l-2xl"
+                : "left-0 right-0 bottom-0 max-h-[92dvh] border-t rounded-t-2xl"
             }`}
           >
             <Drawer.Title className="sr-only">Dive details</Drawer.Title>
-            <div className={isDesktop ? "h-full overflow-y-auto custom-scrollbar p-6" : "max-h-[80dvh] overflow-y-auto custom-scrollbar p-4 pb-8"}>
+            <div className={isDesktop ? "h-full overflow-y-auto custom-scrollbar p-6" : "max-h-[84dvh] overflow-y-auto custom-scrollbar p-4 pb-8"}>
               {!isDesktop && (
                 <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-card-border-bright shrink-0" title="Drag to close" />
               )}

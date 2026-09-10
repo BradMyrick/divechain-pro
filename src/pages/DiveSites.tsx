@@ -298,7 +298,7 @@ export default function DiveSites() {
         )}
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+      <div className="flex flex-col lg:flex-row flex-1 lg:flex-none lg:h-[calc(100dvh-12.25rem)] min-h-0">
         <div className="w-full lg:w-[300px] xl:w-[340px] shrink-0 min-h-0 max-h-[42vh] lg:max-h-[80dvh] border-t lg:border-t-0 lg:border-r border-card-border overflow-y-auto custom-scrollbar bg-card/40 order-2 lg:order-1">
           <div className="p-3 space-y-2">
             {activeTab === "sites" ? (
