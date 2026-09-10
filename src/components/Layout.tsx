@@ -179,7 +179,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <div className="h-dvh flex flex-col relative overflow-hidden">
       <div className="aurora-bg" />
       <div className="grid-overlay" />
 
@@ -216,7 +216,7 @@ export default function Layout() {
             <MobileHeader hasContract={hasContract} isActive={isActive} mobileMenu={mobileMenu} setMobileMenu={setMobileMenu} />
 
             <main className="flex-1 relative z-10 flex flex-col min-h-0 pb-20 lg:pb-0">
-              <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
+              <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar">
                 <Outlet />
               </div>
             </main>
@@ -251,7 +251,7 @@ export default function Layout() {
       ) : (
         /* Disconnected: simple column */
         <main className="flex-1 relative z-10 flex flex-col min-h-0">
-          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
+          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar">
             <Outlet />
           </div>
         </main>

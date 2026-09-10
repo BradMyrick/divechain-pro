@@ -51,6 +51,12 @@ export const REGIONS: Region[] = [
   "South America",
 ];
 
+export const SITE_TYPE_ORDER: readonly SiteType[] = [
+  "Reef", "Wall", "Wreck", "Cave", "Pier", "Pinnacle", "Seamount", "Sandbar", "Muck", "Kelp", "Monument", "Rock", "Thila",
+];
+
+export const DIFFICULTY_ORDER: readonly Difficulty[] = ["Beginner", "Intermediate", "Advanced", "Technical"];
+
 export const DIVE_SITES: DiveSite[] = [
   /* ============ Caribbean: Bonaire ============ */
   { id: "bon-town-pier", name: "Town Pier, Kralendijk", lat: 12.151, lng: -68.276, region: "Caribbean", country: "Bonaire", types: ["Pier", "Reef"],
