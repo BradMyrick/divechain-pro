@@ -1,18 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import type { DiveSite } from "../data/diveSites";
 import type { DiveShop } from "../data/diveShops";
 
 const SITE_COLOR = "#22d3ee";
 const SITE_SELECTED = "#f5c542";
-const SHOP_COLOR = "#0d9488";
+const SHOP_COLOR = "#14b8a6";
+const BROWSE_ALTITUDE = 2.6;
+const DETAIL_ALTITUDE = 1.35;
+const RAD = Math.PI / 180;
 
-interface PinDatum {
+const PIN_SVG = (color: string, filled: boolean) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="${filled ? color : "none"}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>${filled ? `<circle cx="12" cy="10" r="2.6" fill="#04121c"/>` : `<circle cx="12" cy="10" r="3"/>`}</svg>`;
+
+interface HtmlPin {
   lat: number;
   lng: number;
+  el: HTMLDivElement;
+}
+
+interface Datum {
+  lat: number;
+  lng: number;
+  id: string;
+  name: string;
   color: string;
-  radius: number;
-  altitude: number;
+  size: number;
+  filled: boolean;
   site?: DiveSite;
   shop?: DiveShop;
 }
@@ -32,7 +46,9 @@ export default function SitesGlobe({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
+  const htmlPins = useRef(new Map<string, HtmlPin>());
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [globeReady, setGlobeReady] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -45,25 +61,30 @@ export default function SitesGlobe({
     return () => observer.disconnect();
   }, []);
 
-  const pins = useMemo<PinDatum[]>(
+  const data = useMemo<Datum[]>(
     () => [
-      ...sites.map(
-        (s): PinDatum => ({
+      ...sites.map((s): Datum => {
+        const selected = selectedSite?.id === s.id;
+        return {
           lat: s.lat,
           lng: s.lng,
-          color: selectedSite?.id === s.id ? SITE_SELECTED : SITE_COLOR,
-          radius: selectedSite?.id === s.id ? 0.24 : 0.11,
-          altitude: selectedSite?.id === s.id ? 0.68 : 0.42,
+          id: s.id,
+          name: s.name,
+          color: selected ? SITE_SELECTED : SITE_COLOR,
+          size: selected ? 34 : 20,
+          filled: selected,
           site: s,
-        }),
-      ),
+        };
+      }),
       ...shops.map(
-        (s): PinDatum => ({
+        (s): Datum => ({
           lat: s.lat,
           lng: s.lng,
+          id: s.id,
+          name: s.name,
           color: SHOP_COLOR,
-          radius: 0.13,
-          altitude: 0.32,
+          size: 14,
+          filled: true,
           shop: s,
         }),
       ),
@@ -71,12 +92,72 @@ export default function SitesGlobe({
     [sites, shops, selectedSite],
   );
 
+  const makeElement = useCallback((d: Datum): HTMLDivElement => {
+    const el = document.createElement("div");
+    const tipOffset = d.shop ? -d.size / 2 : -d.size;
+    el.style.cssText =
+      `width:${d.size}px;height:${d.size}px;cursor:pointer;` +
+      `margin-left:${-d.size / 2}px;margin-top:${tipOffset}px;` +
+      `filter:drop-shadow(0 0 6px ${d.color}aa);transition:opacity .25s;`;
+    el.title = d.name;
+    el.innerHTML = PIN_SVG(d.color, d.filled);
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (d.site) onSelectSite(d.site);
+      else if (d.shop) onSelectShop(d.shop);
+    });
+    htmlPins.current.set(d.id, { lat: d.lat, lng: d.lng, el });
+    return el;
+  }, [onSelectSite, onSelectShop]);
+
   useEffect(() => {
-    const target = selectedSite;
-    if (target && globeRef.current) {
-      globeRef.current.pointOfView({ lat: target.lat, lng: target.lng, altitude: 1.4 }, 750);
+    const globe = globeRef.current;
+    if (!globe || !globeReady) return;
+
+    globe.pointOfView({ lat: 15, lng: -55, altitude: BROWSE_ALTITUDE }, 0);
+
+    const controls = globe.controls() as unknown as {
+      addEventListener: (t: string, fn: () => void) => void;
+      removeEventListener: (t: string, fn: () => void) => void;
+      minDistance: number;
+      maxDistance: number;
+    };
+    controls.minDistance = 110;
+    controls.maxDistance = 700;
+
+    const updateOcclusion = () => {
+      const pov = globe.pointOfView() as { lat: number; lng: number; altitude: number };
+      const camDist = 100 * (1 + pov.altitude);
+      const threshold = 100 / camDist + 0.06;
+      const cosLat = Math.cos(pov.lat * RAD);
+      const sinLat = Math.sin(pov.lat * RAD);
+      for (const pin of htmlPins.current.values()) {
+        const dot =
+          Math.cos(pin.lat * RAD) * cosLat * Math.cos((pin.lng - pov.lng) * RAD) +
+          Math.sin(pin.lat * RAD) * sinLat;
+        const visible = dot > threshold;
+        pin.el.style.opacity = visible ? "1" : "0";
+        pin.el.style.pointerEvents = visible ? "auto" : "none";
+      }
+    };
+    controls.addEventListener("change", updateOcclusion);
+    updateOcclusion();
+    return () => controls.removeEventListener("change", updateOcclusion);
+  }, [globeReady]);
+
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe || !globeReady) return;
+    if (selectedSite) {
+      globe.pointOfView(
+        { lat: selectedSite.lat, lng: selectedSite.lng, altitude: DETAIL_ALTITUDE },
+        800,
+      );
+    } else {
+      const pov = globe.pointOfView() as { lat: number; lng: number };
+      globe.pointOfView({ lat: pov.lat, lng: pov.lng, altitude: BROWSE_ALTITUDE }, 650);
     }
-  }, [selectedSite]);
+  }, [selectedSite, globeReady]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 bg-abyss">
@@ -89,22 +170,12 @@ export default function SitesGlobe({
           globeImageUrl="/globe/earth-blue-marble.jpg"
           atmosphereColor="#22d3ee"
           atmosphereAltitude={0.17}
-          onGlobeReady={() => {
-            globeRef.current?.pointOfView({ lat: 15, lng: -55, altitude: 2.6 }, 0);
-          }}
-          pointsData={pins}
-          pointLat={(d: object) => (d as PinDatum).lat}
-          pointLng={(d: object) => (d as PinDatum).lng}
-          pointColor={(d: object) => (d as PinDatum).color}
-          pointRadius={(d: object) => (d as PinDatum).radius}
-          pointAltitude={(d: object) => (d as PinDatum).altitude}
-          pointResolution={10}
-          pointsTransitionDuration={350}
-          onPointClick={(d: object) => {
-            const pin = d as PinDatum;
-            if (pin.site) onSelectSite(pin.site);
-            else if (pin.shop) onSelectShop(pin.shop);
-          }}
+          onGlobeReady={() => setGlobeReady(true)}
+          htmlElementsData={data}
+          htmlLat={(d: object) => (d as Datum).lat}
+          htmlLng={(d: object) => (d as Datum).lng}
+          htmlElement={(d: object) => makeElement(d as Datum)}
+          htmlTransitionDuration={200}
           ringsData={
             selectedSite
               ? [{ lat: selectedSite.lat, lng: selectedSite.lng }]
