@@ -299,7 +299,7 @@ export default function DiveSites() {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-        <div className="w-full lg:w-[300px] xl:w-[340px] shrink-0 min-h-0 max-h-[42vh] lg:max-h-none border-t lg:border-t-0 lg:border-r border-card-border overflow-y-auto custom-scrollbar bg-card/40 order-2 lg:order-1">
+        <div className="w-full lg:w-[300px] xl:w-[340px] shrink-0 min-h-0 max-h-[42vh] lg:max-h-[80dvh] border-t lg:border-t-0 lg:border-r border-card-border overflow-y-auto custom-scrollbar bg-card/40 order-2 lg:order-1">
           <div className="p-3 space-y-2">
             {activeTab === "sites" ? (
               filteredSites.length === 0 ? (
@@ -375,7 +375,7 @@ export default function DiveSites() {
           </div>
         </div>
 
-        <div className="flex-1 relative min-h-[58vh] lg:min-h-0 order-1 lg:order-2">
+        <div className="flex-1 relative min-h-[58vh] lg:min-h-0 max-h-dvh order-1 lg:order-2">
           <Suspense
             fallback={
               <div className="absolute inset-0 bg-abyss flex items-center justify-center">

@@ -9,7 +9,7 @@ const SHOP_COLOR = "#14b8a6";
 const BROWSE_ALTITUDE = 2.6;
 const RAD = Math.PI / 180;
 
-console.info("[divechain] globe r6 - camera is fully manual, no auto-zoom exists");
+console.info("[divechain] globe r7 - rotates to the selected pin at your current zoom");
 
 const PIN_SVG = (color: string, filled: boolean) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="${filled ? color : "none"}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>${filled ? `<circle cx="12" cy="10" r="2.6" fill="#04121c"/>` : `<circle cx="12" cy="10" r="3"/>`}</svg>`;
@@ -48,6 +48,7 @@ export default function SitesGlobe({
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const htmlPins = useRef(new Map<string, HtmlPin>());
+  const animRef = useRef<number | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [globeReady, setGlobeReady] = useState(false);
 
@@ -60,11 +61,12 @@ export default function SitesGlobe({
   useEffect(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
+    const clamp = (h: number) => Math.min(h, window.innerHeight || h);
     const observer = new ResizeObserver(() => {
-      setSize({ width: el.clientWidth, height: el.clientHeight });
+      setSize({ width: el.clientWidth, height: clamp(el.clientHeight) });
     });
     observer.observe(el);
-    setSize({ width: el.clientWidth, height: el.clientHeight });
+    setSize({ width: el.clientWidth, height: clamp(el.clientHeight) });
     return () => observer.disconnect();
   }, []);
 
@@ -151,6 +153,39 @@ export default function SitesGlobe({
     updateOcclusion();
     return () => controls.removeEventListener("change", updateOcclusion);
   }, [globeReady]);
+
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe || !globeReady || !selectedSite) return;
+    if (animRef.current !== null) cancelAnimationFrame(animRef.current);
+
+    const start = globe.pointOfView() as { lat: number; lng: number; altitude: number };
+    const dLat = selectedSite.lat - start.lat;
+    const dLng = ((((selectedSite.lng - start.lng) % 360) + 540) % 360) - 180;
+    const t0 = performance.now();
+    const DURATION = 800;
+    const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+    const step = (now: number) => {
+      const t = Math.min(1, (now - t0) / DURATION);
+      const k = ease(t);
+      globe.pointOfView(
+        {
+          lat: start.lat + dLat * k,
+          lng: start.lng + dLng * k,
+          altitude: start.altitude,
+        },
+        0,
+      );
+      if (t < 1) animRef.current = requestAnimationFrame(step);
+      else animRef.current = null;
+    };
+    animRef.current = requestAnimationFrame(step);
+    return () => {
+      if (animRef.current !== null) cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    };
+  }, [selectedSite, globeReady]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 bg-abyss">
