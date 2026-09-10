@@ -27,13 +27,16 @@ import { useAccount } from "wagmi";
 import { BookOpen, CheckCircle, Loader2, MapPin, Compass } from "lucide-react";
 
 const toUnix = (dt: string): number => (dt ? Math.floor(new Date(dt).getTime() / 1000) : 0);
-const todayDateStr = () => new Date().toISOString().slice(0, 10);
+const todayDateStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export default function LogDive() {
   const navigate = useNavigate();
   const { chain } = useAccount();
   const { hasContract, contractAddress } = useDiveContract();
-  const { logDive, diveCount, isPending, isConfirming, isSuccess, error } = useDiveLog(contractAddress);
+  const { logDive, diveCount, isPending, isConfirming, isSuccess, error, reset } = useDiveLog(contractAddress);
 
   const [diveDate, setDiveDate] = useState(todayDateStr());
   const [units, setUnits] = useState<UnitSystem>(UnitSystem.Metric);
@@ -73,11 +76,13 @@ export default function LogDive() {
     });
   };
 
+  const startDayMismatch = Boolean(leaveSurface) && !leaveSurface.startsWith(diveDate);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasContract || !diveDate) return;
-    // diveDate = unix midnight of the selected day (date-only → 00:00 UTC)
-    const diveDateUnix = Math.floor(Date.parse(`${diveDate}T00:00:00Z`) / 1000);
+    if (!hasContract || !diveDate || startDayMismatch) return;
+    // Date-only field: stored as noon UTC so every timezone renders the same calendar day
+    const diveDateUnix = Math.floor(Date.parse(`${diveDate}T12:00:00Z`) / 1000);
     const input: DiveInput = {
       diveDate: diveDateUnix,
       units,
@@ -123,6 +128,37 @@ export default function LogDive() {
       remarks,
     };
     logDive(input);
+  };
+
+  const resetForm = () => {
+    setDiveDate(todayDateStr());
+    setUnits(UnitSystem.Metric);
+    setLeaveSurface("");
+    setLeaveBottom("");
+    setReachSurface("");
+    setMaxDepth(30);
+    setAverageDepth(15);
+    setBottomTimeMinutes(45);
+    setMode(DiveMode.SCUBA);
+    setPurpose(DivePurpose.Recreational);
+    setSuit(SuitType.Wet);
+    setLocation("");
+    setLat("");
+    setLon("");
+    setWaterTemp(20);
+    setAirTemp(25);
+    setCurrentKnots(0);
+    setBottomType(BottomType.Sand);
+    setWeatherConditions("");
+    setDecompType(DecompressionType.NoneDecomp);
+    setTotalDecompTime(0);
+    setGasType(BreathingGas.Air);
+    setO2Percent(21);
+    setHePercent(0);
+    setCylIn(0);
+    setCylOut(0);
+    setRemarks("");
+    reset();
   };
 
   if (!hasContract) {
@@ -196,7 +232,7 @@ export default function LogDive() {
           </div>
           <details className="glass-card-inner p-3">
             <summary className="text-xs text-text-secondary cursor-pointer select-none flex items-center gap-1">
-              <Compass className="w-3.5 h-3.5" /> In/out times (optional, UTC)
+              <Compass className="w-3.5 h-3.5" /> In/out times (optional, local clock)
             </summary>
             <div className="grid grid-cols-3 gap-3 mt-3">
               <Field label="Left surface">
@@ -209,7 +245,13 @@ export default function LogDive() {
                 <input type="datetime-local" value={reachSurface} onChange={(e) => setReachSurface(e.target.value)} />
               </Field>
             </div>
+            <p className="text-[11px] text-text-tertiary mt-2">Times are optional; the dive date is the day the dive started.</p>
           </details>
+          {startDayMismatch && (
+            <p className="text-xs text-warn">
+              The leave-surface time is on a different day than the dive date. Fix one of them before logging.
+            </p>
+          )}
         </div>
 
         {/* Environment */}
@@ -281,7 +323,7 @@ export default function LogDive() {
           <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Notes about the dive…" rows={3} />
         </div>
 
-        <button type="submit" disabled={isPending || isConfirming} className="btn-primary w-full text-base">
+        <button type="submit" disabled={isPending || isConfirming || startDayMismatch} className="btn-primary w-full text-base">
           {isPending ? <><Loader2 className="w-4 h-4 animate-spin" /> Confirm in wallet…</>
             : isConfirming ? <><Loader2 className="w-4 h-4 animate-spin" /> Logging on-chain…</>
             : "Log dive permanently"}
@@ -315,7 +357,7 @@ export default function LogDive() {
                 <button type="button" onClick={() => navigate("/logbook")} className="btn-primary text-sm">
                   View in logbook
                 </button>
-                <button type="button" onClick={() => window.location.reload()} className="btn-ghost text-sm">
+                <button type="button" onClick={resetForm} className="btn-ghost text-sm">
                   Log another
                 </button>
               </div>

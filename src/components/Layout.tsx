@@ -224,7 +224,7 @@ export default function Layout() {
             {/* Bottom Nav */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-card-border-bright z-50 pb-safe">
               <div className="flex justify-around py-1.5">
-                {ALL_ITEMS.slice(0, 5).map((item) => {
+                {ALL_ITEMS.map((item) => {
                   const disabled = item.needsContract && !hasContract;
                   return (
                     <Link

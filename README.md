@@ -75,6 +75,9 @@ type, decompression, and EIP-712 buddy attestations.
 The dApp is a React single-page application with wallet connection (RainbowKit / wagmi),
 on-chain read/write (viem), a dive-site map (react-leaflet), dive analytics, QR buddy
 attestations, public diver profiles, PDF paperwork exports, and a wallet-free demo mode.
+The dive tools are pure client-side math from public-domain sources (U.S. Navy / NOAA
+no-decompression tables, NOAA oxygen limits, DAN flying guidance) — no accounts, no
+data leaves the browser.
 
 | Route | Purpose |
 | --- | --- |
@@ -87,7 +90,7 @@ attestations, public diver profiles, PDF paperwork exports, and a wallet-free de
 | `/attest` | Sign / relay a buddy attestation (incl. QR signature handoff) |
 | `/diver/:address` or `/diver/name.eth` | Public diver profile - verification, QR, PDF exports |
 | `/dive-sites` | Dive-site map |
-| `/tools` | Dive calculators and tools |
+| `/tools` | Dive-planning toolkit: NOAA NDL tables, rock-bottom gas, O₂ clock, weight, no-fly |
 | `/community` | Community / explorer |
 
 Every dive entry carries its flag: **Diver Down** (red) for recreational dives,
