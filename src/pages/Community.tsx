@@ -141,12 +141,13 @@ export default function Community() {
         ))}
       </div>
 
-      {/* On-Chain Community Banner */}
+      {/* Community preview banner */}
       <div className="glass-card p-5 sm:p-6 mt-8 text-center">
         <Megaphone className="w-8 h-8 text-bismuth/50 mx-auto mb-3" />
-        <h3 className="text-sm font-semibold text-white mb-2">Coming Soon: On-Chain Community</h3>
+        <h3 className="text-sm font-semibold text-white mb-2">Coming Soon: A Community of Verified Divers</h3>
         <p className="text-xs text-text-tertiary max-w-md mx-auto mb-4">
-          Posts, buddy reviews, and dive site ratings anchored on-chain. Verifiable reputation, permanent discussions, zero censorship.
+          Forums, dive-site conditions reports, and buddy planning — where every voice is backed by a real
+          on-chain logbook. Reputation you can verify, not just a username.
         </p>
         <button onClick={() => navigate("/")} className="btn-ghost text-xs">
           <Anchor className="w-3.5 h-3.5" /> Learn about Divechain <ArrowRight className="w-3 h-3" />

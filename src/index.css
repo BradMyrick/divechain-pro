@@ -739,11 +739,6 @@ input[type="number"]::-webkit-outer-spin-button {
   color: var(--color-text-secondary) !important;
 }
 
-/* Street tiles are bright ,dim them to sit with the dark UI */
-.basemap-dim {
-  filter: brightness(0.72) saturate(0.75) contrast(1.05);
-}
-
 /* ========== RECHARTS ========== */
 .recharts-text {
   fill: var(--color-text-secondary) !important;

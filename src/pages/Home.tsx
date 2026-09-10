@@ -6,7 +6,7 @@ import { DiverDownFlag, AlphaFlag, DivechainMark } from "../components/flags/Fla
 import {
   Anchor, KeyRound, ShieldCheck, Zap, Lock, FileStack, Fingerprint,
   Waves, BookOpen, ArrowRight, PenLine, Wallet, Fuel,
-  Watch, BellRing, Check, ChevronRight, ExternalLink, Coffee, Globe,
+  Watch, Check, ChevronRight, ExternalLink, Coffee, Globe,
   Users, Wrench, Link2, Play,
 } from "lucide-react";
 
@@ -130,19 +130,7 @@ export default function Home() {
   const { isConnected } = useAccount();
   const { hasContract, needsAdoption } = useDiveContract();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [notifyDone, setNotifyDone] = useState(false);
   const [showAvaxHelp, setShowAvaxHelp] = useState(false);
-
-  const handleNotify = () => {
-    if (!email.includes("@")) return;
-    try {
-      const subs = JSON.parse(localStorage.getItem("dc_watchlist") || "[]");
-      if (!subs.includes(email)) subs.push(email);
-      localStorage.setItem("dc_watchlist", JSON.stringify(subs));
-    } catch { /* localStorage unavailable */ }
-    setNotifyDone(true);
-  };
 
   return (
     <div className="w-full max-w-[1200px] mx-auto">
@@ -447,32 +435,8 @@ export default function Home() {
               exports. Your dive profile, gas data, deco obligations, and environmental readings - automatically
               logged on-chain the moment you surface.
             </p>
-            <p className="text-xs text-text-tertiary max-w-md mx-auto mb-6">
+            <p className="text-xs text-text-tertiary max-w-md mx-auto">
               No more manual transcription. No more "I'll log it later." Surface, sync, done.
-            </p>
-
-            {!notifyDone ? (
-              <div className="flex flex-col sm:flex-row items-center gap-2 max-w-md mx-auto">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  className="!py-3 !text-sm"
-                />
-                <button onClick={handleNotify} className="btn-primary text-sm w-full sm:w-auto shrink-0">
-                  <BellRing className="w-4 h-4" /> Notify me
-                </button>
-              </div>
-            ) : (
-              <div className="glass-card-inner p-4 max-w-sm mx-auto flex items-center gap-3">
-                <Check className="w-5 h-5 text-kelp shrink-0" />
-                <p className="text-sm text-text-secondary">You're on the list. We'll email you when watch sync launches.</p>
-              </div>
-            )}
-
-            <p className="text-[11px] text-text-tertiary mt-3">
-              No spam, just one email when it's ready.
             </p>
           </div>
         </div>
@@ -483,7 +447,7 @@ export default function Home() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { icon: Globe, label: "Dive Sites", to: "/dive-sites", sub: "Explore global regions" },
-            { icon: Wrench, label: "Dive Tools", to: "/tools", sub: "NDL, MOD & SAC calcs" },
+            { icon: Wrench, label: "Dive Tools", to: "/tools", sub: "NDL, min gas, O\u2082 clock" },
             { icon: Users, label: "Community", to: "/community", sub: "Connect with divers" },
             { icon: BookOpen, label: "My Logbook", to: "/logbook", sub: "View your dives" },
           ].map((s) => (
