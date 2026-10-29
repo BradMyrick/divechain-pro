@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Drawer } from "vaul";
 import { useAccount, usePublicClient } from "wagmi";
@@ -90,12 +90,12 @@ const fmtAvax = (wei: bigint): string => {
 
 export default function ImportDives() {
   const navigate = useNavigate();
-  const { address, chain } = useAccount();
-  const { hasContract, contractAddress, walletKey } = useDiveContract();
+  const { address, chain, connector } = useAccount();
+  const { hasContract, contractAddress, walletKey, chainId } = useDiveContract();
   const { dives, owner } = useLogbookData(contractAddress);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const publicClient = usePublicClient();
-  const { txs, running, send, resume, stop } = useBatchSend(contractAddress);
+  const { txs, running, send, resume, stop } = useBatchSend(contractAddress, chainId, connector?.id);
 
   const [draft, setDraft, clearDraft] = useLocalStorage<ImportDraft | null>(
     `divechain-import-draft-${walletKey}`,
@@ -109,6 +109,18 @@ export default function ImportDives() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const scrolledToProgress = useRef(false);
+
+  // Bring the signing progress into view the moment sending starts — with a
+  // long import the panel would otherwise sit below the fold.
+  useEffect(() => {
+    if (txs.length > 0 && !scrolledToProgress.current) {
+      scrolledToProgress.current = true;
+      progressRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    if (txs.length === 0) scrolledToProgress.current = false;
+  }, [txs.length]);
 
   const explorer = chain ? EXPLORERS[chain.id] ?? "" : "";
   const isOwner = !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
@@ -203,6 +215,7 @@ export default function ImportDives() {
 
   const allConfirmed = txs.length > 0 && txs.every((t) => t.status === "confirmed");
   const someFailed = txs.some((t) => t.status === "failed" || t.status === "stopped");
+  const lastError = useMemo(() => txs.find((x) => x.status === "failed" && x.error)?.error, [txs]);
 
   const loadText = (text: string, fileName: string): void => {
     try {
@@ -376,6 +389,23 @@ export default function ImportDives() {
             <p key={n} className="text-xs text-text-tertiary glass-card-inner p-3">{n}</p>
           ))}
 
+          {/* signing progress lives at the top — it must never hide below a
+              long import list */}
+          <div ref={progressRef}>
+            {txs.length > 0 && (
+              <ProgressPanel
+                txs={txs}
+                running={running}
+                explorer={explorer}
+                allConfirmed={allConfirmed}
+                someFailed={someFailed}
+                onStop={stop}
+                onResume={resume}
+                onDone={() => { clearDraft(); navigate("/logbook"); }}
+              />
+            )}
+          </div>
+
           {/* status summary */}
           <div className="grid grid-cols-4 gap-2">
             <StatusCard label="ready to log" value={counts["new"]} tone="kelp" />
@@ -414,6 +444,11 @@ export default function ImportDives() {
 
           {/* ------------------------------------------------- pre-flight bar */}
           <div className="glass-card hairline p-5 space-y-4 sticky bottom-3 z-20">
+            {!running && lastError && (
+              <p className="text-xs text-danger flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {lastError}
+              </p>
+            )}
             {counts.invalid > 0 && (
               <p className="text-xs text-warn flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" />
@@ -451,8 +486,7 @@ export default function ImportDives() {
             </div>
           </div>
 
-          {/* -------------------------------------------------- send progress */}
-          {txs.length > 0 && <ProgressPanel txs={txs} running={running} explorer={explorer} allConfirmed={allConfirmed} someFailed={someFailed} onStop={stop} onResume={resume} onDone={() => { clearDraft(); navigate("/logbook"); }} />}
+          {/* -------------------------------------------------- send progress now lives at the top, right under the file banner */}
 
           <FormatHelp onDownloadExample={downloadExample} />
         </div>
@@ -499,6 +533,11 @@ export default function ImportDives() {
               MetaMask will ask you to sign <span className="text-white font-semibold">{chunks.length}</span>{" "}
               transaction{chunks.length === 1 ? "" : "s"}, one at a time. Each logs up to {DIVES_PER_TX} dives
               permanently — records can never be edited or deleted after this.
+            </p>
+            <p className="text-[11px] text-text-tertiary">
+              Signing with <span className="text-text-secondary font-medium">{connector?.name ?? connector?.id ?? "your connected wallet"}</span>
+              {chain ? <> on <span className="text-text-secondary font-medium">{chain.name}</span></> : null}
+              {" "}— if the prompt does not appear, check the wallet extension icon for a pending request.
             </p>
             <div className="glass-card-inner p-3 space-y-1.5 max-h-52 overflow-y-auto custom-scrollbar">
               {chunks.map((c, i) => (
@@ -613,7 +652,7 @@ function ChevronHint() {
 function ProgressPanel({
   txs, running, explorer, allConfirmed, someFailed, onStop, onResume, onDone,
 }: {
-  txs: { index: number; diveCount: number; status: string; hash?: `0x${string}`; error?: string }[];
+  txs: { index: number; diveCount: number; status: string; hash?: `0x${string}`; error?: string; stalled?: boolean }[];
   running: boolean;
   explorer: string;
   allConfirmed: boolean;
@@ -623,6 +662,7 @@ function ProgressPanel({
   onDone: () => void;
 }) {
   const confirmedDives = txs.filter((t) => t.status === "confirmed").reduce((a, t) => a + t.diveCount, 0);
+  const stalled = txs.find((t) => t.stalled && (t.status === "signing" || t.status === "sent"));
 
   return (
     <div className="glass-card hairline p-5 space-y-3">
@@ -654,7 +694,7 @@ function ProgressPanel({
         {txs.map((t) => (
           <div key={t.index} className="flex items-center justify-between gap-3 text-xs glass-card-inner p-2.5">
             <span className="flex items-center gap-2 text-text-secondary min-w-0">
-              <TxIcon status={t.status} />
+              <TxIcon status={t.status} stalled={t.stalled} />
               Tx {t.index + 1} · {t.diveCount} dive{t.diveCount === 1 ? "" : "s"}
             </span>
             <span className="flex items-center gap-2 shrink-0">
@@ -663,12 +703,17 @@ function ProgressPanel({
                   view <ExternalLink className="w-3 h-3" />
                 </a>
               )}
-              <StatusLabel status={t.status} />
+              <StatusLabel status={t.status} stalled={t.stalled} />
             </span>
           </div>
         ))}
       </div>
 
+      {stalled?.error && (
+        <p className="text-xs text-warn flex items-start gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {stalled.error}
+        </p>
+      )}
       {txs.some((t) => t.status === "failed" && t.error) && (
         <p className="text-xs text-danger">{txs.find((t) => t.status === "failed")?.error}</p>
       )}
@@ -686,14 +731,15 @@ function ProgressPanel({
   );
 }
 
-function TxIcon({ status }: { status: string }) {
+function TxIcon({ status, stalled }: { status: string; stalled?: boolean }) {
   if (status === "confirmed") return <CheckCircle2 className="w-3.5 h-3.5 text-kelp shrink-0" />;
   if (status === "failed") return <AlertTriangle className="w-3.5 h-3.5 text-danger shrink-0" />;
+  if (stalled) return <AlertTriangle className="w-3.5 h-3.5 text-warn shrink-0 animate-pulse" />;
   if (status === "signing" || status === "sent") return <Loader2 className="w-3.5 h-3.5 text-surf animate-spin shrink-0" />;
   return <span className="w-3.5 h-3.5 rounded-full border border-card-border-bright shrink-0 inline-block" />;
 }
 
-function StatusLabel({ status }: { status: string }) {
+function StatusLabel({ status, stalled }: { status: string; stalled?: boolean }) {
   const map: Record<string, { label: string; cls: string }> = {
     queued: { label: "queued", cls: "text-text-tertiary" },
     signing: { label: "signing…", cls: "text-surf" },
@@ -702,7 +748,7 @@ function StatusLabel({ status }: { status: string }) {
     failed: { label: "failed", cls: "text-danger" },
     stopped: { label: "stopped", cls: "text-warn" },
   };
-  const s = map[status] ?? map.queued;
+  const s = stalled ? { label: "waiting for wallet…", cls: "text-warn" } : map[status] ?? map.queued;
   return <span className={`${s.cls} font-medium`}>{s.label}</span>;
 }
 
