@@ -1,9 +1,21 @@
 // Wallet-facing failure classification for batch sends. Pure helpers so the
 // messaging is unit-tested and identical everywhere it appears.
 
+/** True for RPC nonce races: the broadcast was rejected, nothing executed,
+ *  and the same request is safe to send again. Happens when a public RPC's
+ *  view lags behind Avalanche's sub-second finality right after a prior tx
+ *  is confirmed — the wallet builds the next tx with a stale nonce. The
+ *  Foundry broadcaster passes --slow for the same reason. */
+export function isNonceRaceError(err: unknown): boolean {
+  const msg = String((err as Error)?.message ?? err ?? "");
+  return /nonce too low|nonce has already been used|already known/i.test(msg);
+}
+
 /** Human-facing message for a thrown wallet/write error. */
 export function walletErrorMessage(err: unknown): string {
   const msg = String((err as Error)?.message ?? err ?? "Transaction failed");
+  if (isNonceRaceError(msg))
+    return "The RPC was briefly behind your account's transaction count (stale nonce) — nothing was logged in this batch; retrying or resuming is safe.";
   if (/user rejected|request rejected|rejected the request|denied/i.test(msg))
     return "Request declined in the wallet — nothing was sent.";
   if (/not on allow|allowlist|unlisted domain|4100/i.test(msg))

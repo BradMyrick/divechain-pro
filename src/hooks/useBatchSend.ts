@@ -4,7 +4,7 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 import { config } from "../config/wagmi";
 import { SOVEREIGN_DIVE_LOG_ABI } from "../lib/contracts";
 import type { DiveInput } from "../lib/types";
-import { walletErrorMessage, stalledWalletHint } from "../lib/walletErrors";
+import { walletErrorMessage, stalledWalletHint, isNonceRaceError } from "../lib/walletErrors";
 
 export type BatchTxStatus = "queued" | "signing" | "sent" | "confirmed" | "failed" | "stopped";
 
@@ -26,6 +26,20 @@ interface ChunkRef {
 
 /** How long a signing request may produce nothing before we flag it. */
 const STALL_TIMEOUT_MS = 30_000;
+
+/** Pace between wallet requests. Avalanche finalizes sub-second but public
+ *  RPC views lag; asking for the next signature immediately after a receipt
+ *  can fetch a stale nonce from a lagging node ("nonce too low") and fail
+ *  the run. Foundry's broadcaster uses --slow for exactly this. */
+const SEND_PACE_MS = 1_500;
+
+/** Broadcasts rejected for nonce races never executed — retry them. */
+const MAX_SEND_ATTEMPTS = 3;
+
+/** Give a broadcast tx time to confirm before declaring it lost. */
+const RECEIPT_TIMEOUT_MS = 180_000;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Sequential batchLogDives sender: one wallet request at a time, each
@@ -88,20 +102,42 @@ export function useBatchSend(
             patch(index, { stalled: true, error: stalledWalletHint(connectorId) });
           }, STALL_TIMEOUT_MS);
           try {
-            const hash = await writeContractAsync({
-              address: contractAddress,
-              abi: SOVEREIGN_DIVE_LOG_ABI,
-              functionName: "batchLogDives",
-              args: [dives],
-              // Explicit chain: the wallet prompts to switch instead of
-              // silently aiming the write at whatever chain it is on.
-              ...(chainId !== undefined ? { chainId } : {}),
-            });
+            // Nonce races (public RPC lagging one confirmation behind) reject
+            // the broadcast without executing anything — pace and retry.
+            let hash: `0x${string}`;
+            let attempts = 0;
+            for (;;) {
+              try {
+                hash = await writeContractAsync({
+                  address: contractAddress,
+                  abi: SOVEREIGN_DIVE_LOG_ABI,
+                  functionName: "batchLogDives",
+                  args: [dives],
+                  // Explicit chain: the wallet prompts to switch instead of
+                  // silently aiming the write at whatever chain it is on.
+                  ...(chainId !== undefined ? { chainId } : {}),
+                });
+                break;
+              } catch (err) {
+                if (isNonceRaceError(err) && ++attempts < MAX_SEND_ATTEMPTS) {
+                  console.warn(`[batch-send] tx ${index + 1}: nonce race (attempt ${attempts}/${MAX_SEND_ATTEMPTS}), retrying`);
+                  await sleep(SEND_PACE_MS * attempts);
+                  continue;
+                }
+                throw err;
+              }
+            }
             clearTimeout(stallTimer);
             patch(index, { status: "sent", hash, stalled: false, error: undefined });
-            const receipt = await waitForTransactionReceipt(config, { hash });
+            const receipt = await waitForTransactionReceipt(config, {
+              hash,
+              timeout: RECEIPT_TIMEOUT_MS,
+            });
             if (receipt.status === "success") {
               patch(index, { status: "confirmed", stalled: false });
+              // Let lagging RPC views catch up before the next signature
+              // request fetches its nonce.
+              if (index < list.length - 1) await sleep(SEND_PACE_MS);
             } else {
               patch(index, { status: "failed", error: "Transaction reverted on-chain — nothing was logged in this batch", stalled: false });
               break;
