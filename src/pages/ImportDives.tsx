@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, Link } from "react-router-dom";
 import { Drawer } from "vaul";
 import { useAccount, usePublicClient } from "wagmi";
@@ -535,8 +536,13 @@ export default function ImportDives() {
       </Drawer.Root>
 
       {/* ------------------------------------------------------ confirm modal */}
-      {confirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setConfirmOpen(false)}>
+      {/* Portaled to <body>: the app shell uses transforms/backdrop-filters
+          (animate-rise, backdrop-blur) that turn ancestors into containing
+          blocks — an inline position:fixed modal then centers in the whole
+          scrollable document instead of the viewport, hiding it from whoever
+          clicked the button at the bottom of a long list. */}
+      {confirmOpen && createPortal(
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70" onClick={() => setConfirmOpen(false)}>
           <div className="glass-card hairline p-6 w-full max-w-md space-y-4 animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white">Sign {chunks.length} transaction{chunks.length === 1 ? "" : "s"}?</h3>
             <p className="text-sm text-text-secondary">
@@ -579,7 +585,8 @@ export default function ImportDives() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
