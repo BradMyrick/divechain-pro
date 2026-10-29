@@ -47,7 +47,7 @@ export function AlphaFlag({ className, title = "Alpha flag" }: FlagProps) {
  * Divechain brand mark ,the two pennants flying together: recreational and
  * commercial divers, one standard (ERC-8260). "Two flags, one logbook."
  */
-export function DivechainMark({ className, title = "Divechain" }: FlagProps) {
+export function DivechainMark({ className, title = "DiveChain" }: FlagProps) {
   return (
     <svg
       viewBox="0 0 64 32"
@@ -78,7 +78,7 @@ export function DivechainMark({ className, title = "Divechain" }: FlagProps) {
  * Compact mark for tight spaces (favicon-style): diver-down square only.
  * Kept in sync with public/favicon.svg.
  */
-export function DiverDownMark({ className, title = "Divechain" }: FlagProps) {
+export function DiverDownMark({ className, title = "DiveChain" }: FlagProps) {
   return (
     <svg
       viewBox="0 0 40 40"

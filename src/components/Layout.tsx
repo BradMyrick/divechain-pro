@@ -63,8 +63,8 @@ function Sidebar({ hasContract, isActive }: { hasContract: boolean; isActive: (p
             <DivechainMark className="w-8 h-auto" />
           </div>
           <div className="flex flex-col">
-            <span className="font-display text-xl font-bold tracking-[0.04em] text-white leading-none">
-              DIVECHAIN
+            <span className="font-display text-xl font-bold tracking-[0.04em] text-white leading-none uppercase">
+              DiveChain
             </span>
             <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none mt-1">
               Two flags · One logbook
@@ -126,8 +126,8 @@ function MobileHeader({ hasContract, isActive, mobileMenu, setMobileMenu }: {
           <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
             <DivechainMark className="w-7 h-auto" />
           </div>
-          <span className="font-display text-lg font-bold tracking-[0.04em] text-white">
-            DIVECHAIN
+          <span className="font-display text-lg font-bold tracking-[0.04em] text-white uppercase">
+            DiveChain
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -203,8 +203,8 @@ export default function Layout() {
                 <DivechainMark className="w-7 h-auto" />
               </div>
               <div className="flex flex-col">
-                <span className="font-display text-2xl font-bold tracking-[0.04em] text-white leading-none">
-                  DIVECHAIN
+                <span className="font-display text-2xl font-bold tracking-[0.04em] text-white leading-none uppercase">
+                  DiveChain
                 </span>
                 <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none mt-1 hidden sm:block">
                   Two flags · One logbook

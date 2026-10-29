@@ -155,8 +155,8 @@ export default function Attest() {
         <div className="glass-card hairline p-5 mb-4 border-kelp/20">
           <div className="section-title"><QrCode className="w-4 h-4" /> Signed attestation handed to you</div>
           <p className="text-xs text-text-secondary mb-4 leading-relaxed">
-            A buddy has cryptographically signed this attestation. Recording it on-chain costs a
-            fraction of a cent. Your wallet pays the gas, the diver gets the credit.
+            A buddy has cryptographically signed this attestation. Recording it on-chain costs
+            under a cent. Your wallet pays the gas, the diver gets the credit.
           </p>
           <div className="glass-card-inner p-3 mb-3 border-kelp/20 flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-kelp shrink-0" />
