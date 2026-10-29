@@ -22,6 +22,7 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   needsContract: boolean;
+  soon?: boolean;
 };
 
 type NavGroup = {
@@ -43,7 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/dive-sites", label: "Dive Sites", icon: Globe, needsContract: false },
       { path: "/tools", label: "Dive Tools", icon: Wrench, needsContract: false },
-      { path: "/community", label: "Community", icon: Users, needsContract: false },
+      { path: "/community", label: "Community", icon: Users, needsContract: false, soon: true },
     ],
   },
 ];
@@ -87,6 +88,11 @@ function Sidebar({ hasContract, isActive }: { hasContract: boolean; isActive: (p
                   >
                     <item.icon className="w-[18px] h-[18px]" />
                     <span>{item.label}</span>
+                    {item.soon && (
+                      <span className="ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gold/15 text-gold border border-gold/30">
+                        Soon
+                      </span>
+                    )}
                   </Link>
                 );
               })}
