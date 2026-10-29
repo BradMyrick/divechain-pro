@@ -444,6 +444,16 @@ export default function ImportDives() {
 
           {/* ------------------------------------------------- pre-flight bar */}
           <div className="glass-card hairline p-5 space-y-4 sticky bottom-3 z-20">
+            {/* Diagnostic line: one glance shows wallet/connector/chain/owner —
+                the four things that silently break signing. */}
+            <p className="text-[10px] text-text-tertiary font-mono break-all">
+              wallet {address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "not connected"}
+              {" "}· connector {connector?.id ?? "?"}
+              {" "}· chain {chainId ?? "?"}
+              {" "}· owner {owner ? `${owner.slice(0, 8)}…${owner.slice(-6)}` : "loading…"}
+              {" "}· {isOwner ? "owner-verified" : "NOT-OWNER"}
+              {" "}· {readyInputs.length} ready / {draft.rows.length} rows
+            </p>
             {!running && lastError && (
               <p className="text-xs text-danger flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {lastError}

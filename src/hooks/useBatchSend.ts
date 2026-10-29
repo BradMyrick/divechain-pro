@@ -82,6 +82,7 @@ export function useBatchSend(
             break;
           }
           patch(index, { status: "signing", error: undefined, stalled: false });
+          console.info(`[batch-send] tx ${index + 1}/${list.length}: requesting signature (${dives.length} dives)`);
           // Watchdog: if the wallet never opens / never responds, say so.
           const stallTimer = setTimeout(() => {
             patch(index, { stalled: true, error: stalledWalletHint(connectorId) });
@@ -107,6 +108,7 @@ export function useBatchSend(
             }
           } catch (err) {
             clearTimeout(stallTimer);
+            console.error(`[batch-send] tx ${index + 1}: failed`, err);
             patch(index, { status: "failed", error: walletErrorMessage(err), stalled: false });
             break;
           }
@@ -122,9 +124,18 @@ export function useBatchSend(
     (chunks: DiveInput[][]) => {
       chunksRef.current = chunks.map((dives, index) => ({ index, dives }));
       setTxs(chunks.map((dives, index) => ({ index, diveCount: dives.length, status: "queued" as const })));
+      // Diagnostic breadcrumb: everything a remote debugging session needs.
+      console.info("[batch-send] starting", {
+        chunks: chunks.length,
+        dives: chunks.reduce((a, c) => a + c.length, 0),
+        logbook: contractAddress,
+        chainId,
+        connectorId,
+        chunk0FirstDive: chunks[0]?.[0],
+      });
       void runLoop(chunksRef.current);
     },
-    [runLoop],
+    [runLoop, contractAddress, chainId, connectorId],
   );
 
   const resume = useCallback(() => {
