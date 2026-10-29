@@ -1,36 +1,50 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
-import Deploy from "./pages/Deploy";
-import Logbook from "./pages/Logbook";
-import LogDive from "./pages/LogDive";
-import DiveDetail from "./pages/DiveDetail";
-import Profile from "./pages/Profile";
-import DiveSites from "./pages/DiveSites";
-import DiveTools from "./pages/DiveTools";
-import Community from "./pages/Community";
-import Attest from "./pages/Attest";
-import PublicDiver from "./pages/PublicDiver";
-import Demo from "./pages/Demo";
+
+const Deploy = lazy(() => import("./pages/Deploy"));
+const Logbook = lazy(() => import("./pages/Logbook"));
+const LogDive = lazy(() => import("./pages/LogDive"));
+const DiveDetail = lazy(() => import("./pages/DiveDetail"));
+const Profile = lazy(() => import("./pages/Profile"));
+const DiveSites = lazy(() => import("./pages/DiveSites"));
+const DiveTools = lazy(() => import("./pages/DiveTools"));
+const Community = lazy(() => import("./pages/Community"));
+const Attest = lazy(() => import("./pages/Attest"));
+const PublicDiver = lazy(() => import("./pages/PublicDiver"));
+const Demo = lazy(() => import("./pages/Demo"));
+const About = lazy(() => import("./pages/About"));
+
+function PageFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm opacity-60">
+      Loading…
+    </div>
+  );
+}
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/deploy" element={<Deploy />} />
-        <Route path="/logbook" element={<Logbook />} />
-        <Route path="/logbook/:id" element={<DiveDetail />} />
-        <Route path="/log-dive" element={<LogDive />} />
-        <Route path="/attest" element={<Attest />} />
-        <Route path="/dive-sites" element={<DiveSites />} />
-        <Route path="/tools" element={<DiveTools />} />
-        <Route path="/community" element={<Community />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/diver/:ref" element={<PublicDiver />} />
-        <Route path="/demo" element={<Demo />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/deploy" element={<Deploy />} />
+          <Route path="/logbook" element={<Logbook />} />
+          <Route path="/logbook/:id" element={<DiveDetail />} />
+          <Route path="/log-dive" element={<LogDive />} />
+          <Route path="/attest" element={<Attest />} />
+          <Route path="/dive-sites" element={<DiveSites />} />
+          <Route path="/tools" element={<DiveTools />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/diver/:ref" element={<PublicDiver />} />
+          <Route path="/demo" element={<Demo />} />
+          <Route path="/about" element={<About />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }

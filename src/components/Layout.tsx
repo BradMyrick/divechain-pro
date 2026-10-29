@@ -3,7 +3,9 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import WalletConnectWarning from "./WalletConnectWarning";
+import Footer from "./Footer";
 import { DivechainMark } from "./flags/Flags";
+import { useRouteMeta } from "../hooks/useRouteMeta";
 import { useState } from "react";
 import {
   BookOpen,
@@ -14,6 +16,7 @@ import {
   Menu,
   X,
   UserRound,
+  Info,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,6 +25,7 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   needsContract: boolean;
+  soon?: boolean;
 };
 
 type NavGroup = {
@@ -43,7 +47,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: "/dive-sites", label: "Dive Sites", icon: Globe, needsContract: false },
       { path: "/tools", label: "Dive Tools", icon: Wrench, needsContract: false },
-      { path: "/community", label: "Community", icon: Users, needsContract: false },
+      { path: "/community", label: "Community", icon: Users, needsContract: false, soon: true },
+      { path: "/about", label: "About", icon: Info, needsContract: false },
     ],
   },
 ];
@@ -59,8 +64,8 @@ function Sidebar({ hasContract, isActive }: { hasContract: boolean; isActive: (p
             <DivechainMark className="w-8 h-auto" />
           </div>
           <div className="flex flex-col">
-            <span className="font-display text-xl font-bold tracking-[0.04em] text-white leading-none">
-              DIVECHAIN
+            <span className="font-display text-xl font-bold tracking-[0.04em] text-white leading-none uppercase">
+              DiveChain
             </span>
             <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none mt-1">
               Two flags · One logbook
@@ -87,6 +92,11 @@ function Sidebar({ hasContract, isActive }: { hasContract: boolean; isActive: (p
                   >
                     <item.icon className="w-[18px] h-[18px]" />
                     <span>{item.label}</span>
+                    {item.soon && (
+                      <span className="ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-gold/15 text-gold border border-gold/30">
+                        Soon
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -117,8 +127,8 @@ function MobileHeader({ hasContract, isActive, mobileMenu, setMobileMenu }: {
           <div className="w-9 h-9 rounded-lg bg-navy/60 border border-card-border flex items-center justify-center">
             <DivechainMark className="w-7 h-auto" />
           </div>
-          <span className="font-display text-lg font-bold tracking-[0.04em] text-white">
-            DIVECHAIN
+          <span className="font-display text-lg font-bold tracking-[0.04em] text-white uppercase">
+            DiveChain
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -172,6 +182,7 @@ export default function Layout() {
   const { hasContract } = useDiveContract();
   const location = useLocation();
   const [mobileMenu, setMobileMenu] = useState(false);
+  useRouteMeta();
 
   const isActive = (path: string) => {
     if (path === "/logbook") return location.pathname === "/logbook" || location.pathname.startsWith("/logbook/");
@@ -194,8 +205,8 @@ export default function Layout() {
                 <DivechainMark className="w-7 h-auto" />
               </div>
               <div className="flex flex-col">
-                <span className="font-display text-2xl font-bold tracking-[0.04em] text-white leading-none">
-                  DIVECHAIN
+                <span className="font-display text-2xl font-bold tracking-[0.04em] text-white leading-none uppercase">
+                  DiveChain
                 </span>
                 <span className="text-[9px] uppercase tracking-[0.2em] text-text-tertiary leading-none mt-1 hidden sm:block">
                   Two flags · One logbook
@@ -218,6 +229,7 @@ export default function Layout() {
             <main className="flex-1 relative z-10 flex flex-col min-h-0 pb-20 lg:pb-0">
               <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
                 <Outlet />
+                <Footer />
               </div>
             </main>
 
@@ -253,6 +265,7 @@ export default function Layout() {
         <main className="flex-1 relative z-10 flex flex-col min-h-0">
           <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
             <Outlet />
+            <Footer />
           </div>
         </main>
       )}

@@ -10,16 +10,19 @@ export const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT
 // banner explaining how to enable mobile / QR wallets.
 export const config = walletConnectProjectId
   ? getDefaultConfig({
-      appName: "Divechain",
+      appName: "DiveChain",
+      appDescription: "Your sovereign, on-chain scuba logbook (ERC-8260) on Avalanche.",
+      appUrl: "https://divechain.pro",
+      appIcon: "https://divechain.pro/apple-touch-icon.png",
       projectId: walletConnectProjectId,
-      chains: [avalancheFuji, avalanche],
-      ssr: true,
+      chains: [avalanche, avalancheFuji],
+      ssr: false,
     })
   : createConfig({
-      chains: [avalancheFuji, avalanche],
+      chains: [avalanche, avalancheFuji],
       transports: {
-        [avalancheFuji.id]: http(),
         [avalanche.id]: http(),
+        [avalancheFuji.id]: http(),
       },
       connectors: [injected()],
     });

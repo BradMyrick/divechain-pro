@@ -3,10 +3,12 @@ import { useAccount } from "wagmi";
 import { useNavigate } from "react-router-dom";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import { DiverDownFlag, AlphaFlag, DivechainMark } from "../components/flags/Flags";
+import NotifyForm from "../components/NotifyForm";
+import { COSTS } from "../config/costs";
 import {
   Anchor, KeyRound, ShieldCheck, Zap, Lock, FileStack, Fingerprint,
   Waves, BookOpen, ArrowRight, PenLine, Wallet, Fuel,
-  Watch, BellRing, Check, ChevronRight, ExternalLink, Coffee, Globe,
+  Watch, Check, ChevronRight, ExternalLink, Coffee, Globe,
   Users, Wrench, Link2, Play,
 } from "lucide-react";
 
@@ -39,8 +41,8 @@ const STEPS = [
   {
     num: "2",
     icon: Fuel,
-    title: "Add a few cents of AVAX",
-    body: "Deploying costs about $0.50. Buy AVAX on Coinbase, Binance, or directly in Core Wallet. You only need pocket change.",
+    title: "Add a little AVAX",
+    body: `Claiming your logbook costs ${COSTS.claimAvax}, a few cents. Get AVAX on Coinbase, Binance or in Core Wallet.`,
     action: "buy",
   },
   {
@@ -95,7 +97,7 @@ const PILLARS = [
 const FAQS = [
   {
     q: "How much does it cost?",
-    a: "Claiming your logbook costs ~2M gas — roughly $0.10–0.50 on Avalanche C-Chain. Each dive entry costs a fraction of a cent. Total cost of ownership: pocket change.",
+    a: `Claiming your logbook takes ${COSTS.claimGas}, roughly ${COSTS.claimAvax} at recent C-Chain fees. Each dive costs ${COSTS.perDiveAvax}. ${COSTS.starterAvax} covers your claim and around 50 dives.`,
   },
   {
     q: "What if I lose my wallet?",
@@ -115,7 +117,7 @@ const FAQS = [
   },
   {
     q: "Why Avalanche and not another chain?",
-    a: "Avalanche offers sub-second finality, fees under a cent, and the C-Chain is EVM-compatible - meaning any Ethereum wallet works. It's fast enough that logging a dive between surface intervals is instant.",
+    a: "Avalanche offers sub-second finality, low fees (under a cent per dive entry), and full EVM compatibility - meaning any Ethereum wallet works. It's fast enough that logging a dive between surface intervals is instant.",
   },
 ];
 
@@ -130,19 +132,7 @@ export default function Home() {
   const { isConnected } = useAccount();
   const { hasContract, needsAdoption } = useDiveContract();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [notifyDone, setNotifyDone] = useState(false);
   const [showAvaxHelp, setShowAvaxHelp] = useState(false);
-
-  const handleNotify = () => {
-    if (!email.includes("@")) return;
-    try {
-      const subs = JSON.parse(localStorage.getItem("dc_watchlist") || "[]");
-      if (!subs.includes(email)) subs.push(email);
-      localStorage.setItem("dc_watchlist", JSON.stringify(subs));
-    } catch { /* localStorage unavailable */ }
-    setNotifyDone(true);
-  };
 
   return (
     <div className="w-full max-w-[1200px] mx-auto">
@@ -304,7 +294,7 @@ export default function Home() {
                     </a>
                   ))}
                   <p className="text-[11px] text-text-tertiary mt-1">
-                    Only need ~$0.50 worth - about 0.05 AVAX
+                    {COSTS.starterAvax} is plenty to claim and log your first dives
                   </p>
                 </div>
               )}
@@ -363,7 +353,7 @@ export default function Home() {
               {[
                 "Wallet key = sole write authority",
                 "ERC-165 interface detection (0x321ef561)",
-                "Military-grade schema (DD Form 2544 lineage)",
+                "Detailed schema covering gas, decompression, conditions and remarks",
                 "Dual unit system: Imperial & Metric",
                 "Batch logging for multi-dive days",
                 "Void mechanism preserves audit trail",
@@ -451,29 +441,7 @@ export default function Home() {
               No more manual transcription. No more "I'll log it later." Surface, sync, done.
             </p>
 
-            {!notifyDone ? (
-              <div className="flex flex-col sm:flex-row items-center gap-2 max-w-md mx-auto">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  className="!py-3 !text-sm"
-                />
-                <button onClick={handleNotify} className="btn-primary text-sm w-full sm:w-auto shrink-0">
-                  <BellRing className="w-4 h-4" /> Notify me
-                </button>
-              </div>
-            ) : (
-              <div className="glass-card-inner p-4 max-w-sm mx-auto flex items-center gap-3">
-                <Check className="w-5 h-5 text-kelp shrink-0" />
-                <p className="text-sm text-text-secondary">You're on the list. We'll email you when watch sync launches.</p>
-              </div>
-            )}
-
-            <p className="text-[11px] text-text-tertiary mt-3">
-              No spam, just one email when it's ready.
-            </p>
+            <NotifyForm source="home-watch-sync" />
           </div>
         </div>
       </section>
@@ -532,8 +500,12 @@ export default function Home() {
       <section className="text-center py-8 sm:py-10 mb-6">
         <div className="glass-card hairline p-6 sm:p-10 max-w-2xl mx-auto">
           <img
-            src="/DC-LOGO-SCUBA.png"
-            alt="Divechain"
+            src="/logo-512.webp"
+            width={80}
+            height={80}
+            loading="lazy"
+            decoding="async"
+            alt="DiveChain"
             className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 object-contain drop-shadow-[0_0_30px_rgba(34,211,238,0.2)] animate-float"
           />
           <h2 className="text-xl sm:text-3xl font-bold gradient-text mb-3">Take control of your dive history.</h2>
