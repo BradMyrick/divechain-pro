@@ -1,5 +1,7 @@
 # DiveChain
 
+[![CI](https://github.com/BradMyrick/divechain-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/BradMyrick/divechain-pro/actions/workflows/ci.yml)
+
 > Your dive log. Not theirs.
 
 **DiveChain** is a sovereign, on-chain scuba dive logbook. Each diver deploys
@@ -12,7 +14,9 @@ This repository contains the **DiveChain web application** (the dApp you use in 
 browser) plus the **ERC-8260 contracts**: each diver's sovereign `SovereignDiveLog`
 logbook and the `DiveLogFactory` registry that maps wallets to logbooks on-chain.
 
-**Live site:** [divechain.pro](https://divechain.pro)
+**Live site:** [divechain.pro](https://divechain.pro) · **ERC-8260:** [EIP PR #1735](https://github.com/ethereum/ERCs/pull/1735)
+
+**Status:** Live on Avalanche C-Chain. Not yet third-party audited.
 
 ---
 
@@ -175,6 +179,6 @@ What you deploy is what you read — no unaudited bytecode in between.
 
 ## License
 
-**MIT** for this application, the indexer, and tooling — see [LICENSE](./LICENSE).
-The ERC-8260 reference contracts under [`deployment/`](./deployment/README.md)
-are **CC0-1.0** (public domain), as the standard requires.
+App code is MIT (see [`LICENSE`](./LICENSE)). Contracts and reference files in
+[`deployment/`](./deployment/) are CC0-1.0 (see [`deployment/LICENSE`](./deployment/LICENSE)),
+so anyone can implement ERC-8260 freely.
