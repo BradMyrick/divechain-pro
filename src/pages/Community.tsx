@@ -1,6 +1,7 @@
 import { Megaphone, Anchor, ArrowRight, ExternalLink } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import NotifyForm from "../components/NotifyForm";
+import { LINKS, live } from "../config/links";
 
 export default function Community() {
   const navigate = useNavigate();
@@ -50,18 +51,20 @@ export default function Community() {
           Get notified when watch sync and community features launch.
         </p>
         <NotifyForm source="community" />
-        <p className="mt-5">
-          <a
-            href="https://x.com/dive_chain"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-surf hover:underline"
-          >
-            Join the conversation on X <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        </p>
+        {live(LINKS.x) && (
+          <p className="mt-5">
+            <a
+              href={LINKS.x}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-surf hover:underline"
+            >
+              Join the conversation on X <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </p>
+        )}
         <div className="mt-6">
-          <Link to="/" className="btn-ghost text-xs inline-flex items-center gap-1.5">
+          <Link to="/about" className="btn-ghost text-xs inline-flex items-center gap-1.5">
             <Anchor className="w-3.5 h-3.5" /> Learn about DiveChain <ArrowRight className="w-3 h-3" />
           </Link>
         </div>

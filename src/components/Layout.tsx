@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import WalletConnectWarning from "./WalletConnectWarning";
+import Footer from "./Footer";
 import { DivechainMark } from "./flags/Flags";
 import { useState } from "react";
 import {
@@ -14,6 +15,7 @@ import {
   Menu,
   X,
   UserRound,
+  Info,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -45,6 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: "/dive-sites", label: "Dive Sites", icon: Globe, needsContract: false },
       { path: "/tools", label: "Dive Tools", icon: Wrench, needsContract: false },
       { path: "/community", label: "Community", icon: Users, needsContract: false, soon: true },
+      { path: "/about", label: "About", icon: Info, needsContract: false },
     ],
   },
 ];
@@ -224,6 +227,7 @@ export default function Layout() {
             <main className="flex-1 relative z-10 flex flex-col min-h-0 pb-20 lg:pb-0">
               <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
                 <Outlet />
+                <Footer />
               </div>
             </main>
 
@@ -259,6 +263,7 @@ export default function Layout() {
         <main className="flex-1 relative z-10 flex flex-col min-h-0">
           <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
             <Outlet />
+            <Footer />
           </div>
         </main>
       )}
