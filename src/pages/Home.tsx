@@ -451,7 +451,7 @@ export default function Home() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { icon: Globe, label: "Dive Sites", to: "/dive-sites", sub: "Explore global regions" },
-            { icon: Wrench, label: "Dive Tools", to: "/tools", sub: "NDL, MOD & SAC calcs" },
+            { icon: Wrench, label: "Dive Tools", to: "/tools", sub: "NDL, min gas, O₂ clock" },
             { icon: Users, label: "Community", to: "/community", sub: "Connect with divers" },
             { icon: BookOpen, label: "My Logbook", to: "/logbook", sub: "View your dives" },
           ].map((s) => (

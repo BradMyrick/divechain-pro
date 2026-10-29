@@ -2,6 +2,22 @@
 
 Documented technical approaches for the next milestones. Not yet scheduled.
 
+## Bühlmann ZHL-16C dive planner
+
+The recreational tools (`src/lib/planning/`) ship single-dive NOAA/USN tables only;
+repetitive credit and deco need a real tissue model. Phase 4 of the site-perfection
+plan (after dive-site conditions and forums):
+
+- ZHL-16C coefficients (N2 + He compartments), gradient factors lo/hi, square and
+  multilevel profiles, deco gas switches (EAN50/O2), trimix, surface-interval
+  washout for repetitive dives.
+- Integrate with the existing modules: CNS/OTU from the O2 clock, gas planning from
+  rock bottom across bottom + deco gases, runtime schedule + printable slate (jspdf).
+- Validation: unit tests against published planner vectors (Subsurface-style
+  reference outputs) plus property tests (deeper ⇒ shorter NDL, GF monotonicity).
+- Table provenance for phase 1 lives in the modules: air NDL from 46 CFR 197
+  App. A (USN source), NOAA CNS/OTU, DAN 2002 flying consensus — all public domain.
+
 ## Sponsored deployment ("first 1,000 divers free")
 
 Deferred by decision (2026-09). Architecture is prepared:
@@ -21,11 +37,21 @@ The single biggest adoption lever: parse Shearwater/Garmin/Suunto exports
 (`.uddf`, `.sml`, `.db`), preview, then batch-mint history via `batchLogDives`
 (capped at 100 per tx — chunk imports across transactions).
 
+**Status (2026-10): the generic-JSON half is shipped.** `/import` parses the
+Divechain Batch JSON standard (posted in the README, exported from the
+Logbook), the commercial `commercial_dive_logs` repair format, and best-effort
+generic JSON; it prunes dives already on-chain (day + bottom time + max depth),
+chunks at the measured 8 dives/tx, and walks the user through sequential
+signing with pre-flight gas estimates. Still open:
+
+- A UDDF 3.2.3 parser (streit.cc) via browser `DOMParser`, slotting into the
+  same parser registry (`src/lib/batchImport.ts`) — Subsurface/DivingLog
+  exports make onboarding most dive computers trivial.
 - Real sample data: `DiveData.leaveSurfaceTime/leaveBottomTime/
   reachSurfaceTime` + depth/time samples are NOT carried by the on-chain
   struct (only summary fields). Keep full profiles off-chain (IPFS or a
   content-addressed store) and anchor `keccak256(profile)` in `remarks` or a
-  future ERC extension event.
+  future ERC extension event (ruled 2026-09, DIV-D-1).
 - `DiveProfileSketch` (src/components/DiveProfileSketch.tsx) already renders
   either an estimated sketch or real sample arrays — feed it the imported
   samples.

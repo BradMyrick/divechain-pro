@@ -84,6 +84,23 @@ describe("computeDiverStats", () => {
     expect(s.deepestDiveId).toBe(2n);
   });
 
+  it("compares depths across unit systems before picking the deepest", () => {
+    const metricShallow = mkDive({ id: 10, date: 100, depth: 30, bt: 40 });
+    const imperialDeeper = mkDive({ id: 11, date: 200, depth: 110, bt: 40 });
+    imperialDeeper.units = UnitSystem.Imperial;
+    const s = computeDiverStats([metricShallow, imperialDeeper]);
+    expect(s.deepestDiveId).toBe(11n);
+    expect(s.maxDepth).toBe(110);
+    expect(s.maxDepthUnits).toBe(UnitSystem.Imperial);
+
+    const imperialShallower = mkDive({ id: 12, date: 300, depth: 95, bt: 40 });
+    imperialShallower.units = UnitSystem.Imperial;
+    const s2 = computeDiverStats([metricShallow, imperialShallower]);
+    expect(s2.deepestDiveId).toBe(10n);
+    expect(s2.maxDepth).toBe(30);
+    expect(s2.maxDepthUnits).toBe(UnitSystem.Metric);
+  });
+
   it("computes attestation coverage over active dives", () => {
     const s = computeDiverStats(dives);
     expect(s.attestedDives).toBe(2);

@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 const Deploy = lazy(() => import("./pages/Deploy"));
 const Logbook = lazy(() => import("./pages/Logbook"));
 const LogDive = lazy(() => import("./pages/LogDive"));
+const ImportDives = lazy(() => import("./pages/ImportDives"));
 const DiveDetail = lazy(() => import("./pages/DiveDetail"));
 const Profile = lazy(() => import("./pages/Profile"));
 const DiveSites = lazy(() => import("./pages/DiveSites"));
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/logbook" element={<Logbook />} />
           <Route path="/logbook/:id" element={<DiveDetail />} />
           <Route path="/log-dive" element={<LogDive />} />
+          <Route path="/import" element={<ImportDives />} />
           <Route path="/attest" element={<Attest />} />
           <Route path="/dive-sites" element={<DiveSites />} />
           <Route path="/tools" element={<DiveTools />} />

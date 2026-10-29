@@ -226,8 +226,8 @@ export default function Layout() {
           <div className="flex-1 flex flex-col min-w-0 min-h-0">
             <MobileHeader hasContract={hasContract} isActive={isActive} mobileMenu={mobileMenu} setMobileMenu={setMobileMenu} />
 
-            <main className="flex-1 relative z-10 flex flex-col min-h-0 pb-20 lg:pb-0">
-              <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
+            <main className="flex-1 relative z-10 flex flex-col pb-20 lg:pb-0">
+              <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 w-full">
                 <Outlet />
                 <Footer />
               </div>
@@ -236,7 +236,7 @@ export default function Layout() {
             {/* Bottom Nav */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-card-border-bright z-50 pb-safe">
               <div className="flex justify-around py-1.5">
-                {ALL_ITEMS.slice(0, 5).map((item) => {
+                {ALL_ITEMS.map((item) => {
                   const disabled = item.needsContract && !hasContract;
                   return (
                     <Link
@@ -262,8 +262,8 @@ export default function Layout() {
         </div>
       ) : (
         /* Disconnected: simple column */
-        <main className="flex-1 relative z-10 flex flex-col min-h-0">
-          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 min-h-0 w-full">
+        <main className="flex-1 relative z-10 flex flex-col">
+          <div className="max-w-[1400px] mx-auto px-3 sm:px-6 lg:px-8 pt-1 pb-4 sm:pt-2 sm:pb-6 lg:pt-4 lg:pb-8 flex flex-col flex-1 w-full">
             <Outlet />
             <Footer />
           </div>

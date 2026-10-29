@@ -14,7 +14,7 @@ import DiveProfileSketch from "../components/DiveProfileSketch";
 import QRCode from "../components/QRCode";
 import { DiverDownFlag, AlphaFlag, DivechainMark } from "../components/flags/Flags";
 import {
-  DIVE_MODE_LABELS, DIVE_PURPOSE_LABELS, BREATHING_GAS_LABELS, depthUnit, DiveMode, DivePurpose, BreathingGas, UnitSystem,
+  DIVE_MODE_LABELS, DIVE_PURPOSE_LABELS, BREATHING_GAS_LABELS, depthUnit, tempUnit, DiveMode, DivePurpose, BreathingGas, UnitSystem,
 } from "../lib/contracts";
 import {
   Anchor, Clock, Waves, ShieldCheck, Loader2, MapPin, ChevronDown, ChevronRight,
@@ -397,7 +397,7 @@ function DiveRow({ dive, demo, chainId }: { dive: NormalizedDive; demo: boolean;
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
             <Field label="Purpose" value={DIVE_PURPOSE_LABELS[Number(dive.data.purpose) as DivePurpose] ?? "-"} />
             <Field label="Mode" value={DIVE_MODE_LABELS[Number(dive.data.mode) as DiveMode] ?? "-"} />
-            <Field label="Water temp" value={`${Number(dive.env.waterTemp)}°C`} />
+            <Field label="Water temp" value={`${Number(dive.env.waterTemp)}${tempUnit(Number(dive.units))}`} />
             <Field
               label="Deco"
               value={Number(dive.decomp.totalDecompTimeMinutes)

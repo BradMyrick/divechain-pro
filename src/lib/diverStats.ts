@@ -1,5 +1,5 @@
 import type { DiveLog, VoidInfo, Attestation } from "./types";
-import { DiveMode, DivePurpose, BreathingGas, DIVE_MODE_LABELS } from "./contracts";
+import { DiveMode, DivePurpose, BreathingGas, DIVE_MODE_LABELS, UnitSystem } from "./contracts";
 import { DEMO_ATTESTERS } from "../demo/fixtures";
 
 /** Working/commercial purposes fly the Alpha flag; everything else Diver Down. */
@@ -50,6 +50,7 @@ export function computeDiverStats(dives: NormalizedDive[]): DiverStats {
   let commercialBottomMinutes = 0;
   let ssaDives = 0;
   let maxDepth = 0;
+  let maxDepthMeters = 0;
   let deepestDiveId: bigint | undefined;
   let maxDepthUnits = 0;
   let attestedDives = 0;
@@ -67,8 +68,10 @@ export function computeDiverStats(dives: NormalizedDive[]): DiverStats {
     }
     if (Number(d.data.mode) === DiveMode.SSA) ssaDives++;
     const depth = Number(d.data.maxDepth) || 0;
-    if (depth > maxDepth) {
+    const depthMeters = Number(d.units) === UnitSystem.Imperial ? depth * 0.3048 : depth;
+    if (depthMeters > maxDepthMeters) {
       maxDepth = depth;
+      maxDepthMeters = depthMeters;
       deepestDiveId = d.id;
       maxDepthUnits = Number(d.units);
     }
