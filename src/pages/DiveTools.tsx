@@ -38,7 +38,22 @@ export default function DiveTools() {
           Plan the dive. Public-domain NOAA / U.S. Navy data, not guesswork.
         </p>
       </div>
-      <div className="depth-ruler mb-6" />
+      <div className="depth-ruler mb-4" />
+
+      <aside
+        id="disclaimer"
+        role="note"
+        className="mb-4 sm:mb-5 flex gap-2.5 items-start bg-warn/10 border border-warn/40 text-warn text-xs sm:text-sm px-3 py-2.5 rounded-lg leading-snug"
+      >
+        <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+        <p>
+          <strong className="font-semibold">Not a dive computer, not a substitute for training.</strong>{" "}
+          These calculators are for planning practice and education only. Always verify against your
+          training agency&apos;s tables or your dive computer, and dive within your certification.
+          Sources: U.S. Navy / NOAA no-decompression tables (46 CFR 197 App. A), NOAA oxygen exposure
+          limits, DAN Flying After Diving (2002) consensus.
+        </p>
+      </aside>
 
       <div className="flex gap-1.5 mb-4 sm:mb-5 flex-wrap">
         {TOOLS.map(([key, label]) => (
@@ -475,6 +490,18 @@ function O2Panel() {
           {decoOn && <Note>Deco ppO₂ at 5 m: {pDeco.toFixed(2)} (EAN50 &rarr; 1.25, O₂ &rarr; 1.5)</Note>}
         </div>
       </div>
+      <div className="glass-card-inner p-3 space-y-1">
+        <Note>
+          Target: hold a 5 m safety stop, near-empty tank, breath held at half-lung — that is
+          where the weights have to balance you, not at the surface.
+        </Note>
+        <Note>Ballpark of &plusmn;2 kg / 5 lb at best: suit compression, body composition, and cylinder quirks all move it. Verify in shallow water before diving new gear.</Note>
+      </div>
+    </div>
+  );
+}
+
+/* ================================ NO-FLY ================================ */
 
       <div className="glass-card-inner !p-0 overflow-hidden">
         <table className="w-full text-[11px] sm:text-xs">

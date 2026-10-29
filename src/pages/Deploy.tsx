@@ -14,6 +14,7 @@ import {
 } from "../lib/factory";
 import { SOVEREIGN_DIVE_LOG_ABI, SOVEREIGN_DIVE_LOG_BYTECODE } from "../lib/contracts";
 import { DiverDownFlag, AlphaFlag } from "../components/flags/Flags";
+import { COSTS } from "../config/costs";
 import {
   ShieldCheck, KeyRound, Fingerprint, Loader2,
   AlertTriangle, ExternalLink, Check, ChevronRight, Anchor, Link2,
@@ -162,7 +163,7 @@ export default function Deploy() {
               <p className="text-sm font-semibold text-white mb-1">You need a small amount of AVAX</p>
               <p className="text-xs text-text-secondary mb-3">
                 Your balance: <span className="text-warn font-mono">{Number(balance.formatted).toFixed(4)} AVAX</span>.
-                Claiming costs ~$0.10–0.50 (about 0.01–0.05 AVAX).
+                Claiming costs {COSTS.claimAvax} (a few cents).
               </p>
               {!showAvaxHelp ? (
                 <button
@@ -255,7 +256,7 @@ export default function Deploy() {
 
         {busy && (
           <p className="text-[11px] text-text-tertiary text-center mt-3">
-            ~2M gas. You'll be taken to your logbook once confirmed.
+            About 3.1M gas. You'll be taken to your logbook once confirmed.
           </p>
         )}
         {error && (

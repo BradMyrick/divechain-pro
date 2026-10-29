@@ -36,8 +36,8 @@ createRoot(document.getElementById("root")!).render(
             fontStack: "system",
           })}
           appInfo={{
-            appName: "Divechain",
-            learnMoreUrl: "https://github.com/BradMyrick/divechain-pro",
+            appName: "DiveChain",
+            learnMoreUrl: "https://divechain.pro/about",
           }}
         >
           <BrowserRouter>

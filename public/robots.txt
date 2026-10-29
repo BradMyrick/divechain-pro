@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /logbook
+Disallow: /log-dive
+Disallow: /profile
+Disallow: /attest
+Sitemap: https://divechain.pro/sitemap.xml
