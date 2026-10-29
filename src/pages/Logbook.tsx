@@ -5,12 +5,14 @@ import { useDiveContract } from "../contexts/DiveContractContext";
 import { useLogbookData } from "../hooks/useLogbook";
 import { computeDiverStats, formatMinutes, type NormalizedDive } from "../lib/diverStats";
 import { UnitSystem, depthUnit } from "../lib/contracts";
+import { divesToBatchJson, downloadBatchJson } from "../lib/batchExport";
 import DiveDetail from "./DiveDetail";
 import { groupByMonth } from "../lib/groupDives";
 import FlagChip from "../components/FlagChip";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import {
   BookOpen, Clock, ShieldCheck, Plus, Waves, MapPin, Activity, ChevronRight,
+  Upload, FileDown,
 } from "lucide-react";
 
 export default function Logbook() {
@@ -22,6 +24,15 @@ export default function Logbook() {
 
   const stats = useMemo(() => computeDiverStats(dives), [dives]);
   const groups = useMemo(() => groupByMonth(dives), [dives]);
+
+  const exportJson = (): void => {
+    if (dives.length === 0 || !contractAddress) return;
+    const short = contractAddress.slice(2, 8);
+    downloadBatchJson(
+      divesToBatchJson(dives),
+      `divechain-logbook-${short}-${new Date().toISOString().slice(0, 10)}.json`,
+    );
+  };
 
   if (!hasContract) {
     return (
@@ -49,6 +60,14 @@ export default function Logbook() {
             <MiniStat icon={<Clock className="w-3 h-3" />} value={formatMinutes(stats.totalBottomMinutes)} label="bottom" />
             <MiniStat icon={<ShieldCheck className="w-3 h-3" />} value={`${Math.round(stats.attestationCoverage * 100)}%`} label="attested" />
           </div>
+          {dives.length > 0 && (
+            <button onClick={exportJson} title="Download your logbook as Divechain Batch JSON" className="btn-ghost text-sm px-3 py-2">
+              <FileDown className="w-4 h-4" /> <span className="hidden sm:inline">JSON</span>
+            </button>
+          )}
+          <button onClick={() => navigate("/import")} title="Import dives from JSON" className="btn-outline text-sm px-3 py-2">
+            <Upload className="w-4 h-4" /> <span className="hidden sm:inline">Import</span>
+          </button>
           <button onClick={() => navigate("/log-dive")} className="btn-primary text-sm px-4 py-2">
             <Plus className="w-4 h-4" /> Log Dive
           </button>
@@ -68,8 +87,13 @@ export default function Logbook() {
         <div className="text-center py-20 px-6">
           <BookOpen className="w-12 h-12 text-bismuth/50 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-white mb-2">No dives yet</h3>
-          <p className="text-sm text-text-secondary mb-6">Time to get wet. Log your first dive.</p>
-          <button onClick={() => navigate("/log-dive")} className="btn-primary">Log Your First Dive</button>
+          <p className="text-sm text-text-secondary mb-6">Time to get wet — log a dive, or import your history.</p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <button onClick={() => navigate("/log-dive")} className="btn-primary">Log Your First Dive</button>
+            <button onClick={() => navigate("/import")} className="btn-outline">
+              <Upload className="w-4 h-4" /> Import your dive history
+            </button>
+          </div>
         </div>
       ) : (
         groups.map((group) => (

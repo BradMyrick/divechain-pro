@@ -1,0 +1,48 @@
+{
+  // AiWrangler ground-truth + gates configuration for Divechain Pro.
+  // Corpus lives in-repo (docs/ground-truth/) so it travels with the code.
+  // Runtime overrides: AIWRANGLER_DISABLE=docDrift,ambiguity  AIWRANGLER_POLICY=permissive  AIWRANGLER_EGRESS=off
+  "model": "jev-1.13.0",
+  "activePolicy": "strict",
+  "egress": {
+    // Sends task/diff/spec text to api.typesafe.ai (no-training per their docs). Set AIWRANGLER_EGRESS=off to degrade to deterministic-only.
+    "semantic": true,
+    "warnOncePerSession": true
+  },
+  "corpus": {
+    "spec": "docs/ground-truth/spec.md",
+    "rules": "docs/ground-truth/review-rules.md",
+    "divergences": "docs/ground-truth/divergence-register.md",
+    "questions": "docs/ground-truth/questions.md",
+    "plan": "docs/ground-truth/plan.md",
+    "docs": ["deployment/README.md", "indexer/README.md", "SECURITY.md"],
+    "whitepaper": "docs/ground-truth/whitepaper.pdf"
+  },
+  "gates": {
+    "plan": { "inSpec": true, "ambiguity": true, "openQuestions": true, "oneWayDoors": true },
+    "retrieval": { "rerank": true, "topK": 6 },
+    "check": {
+      "deterministic": true,
+      "battery": true,
+      "selfReport": true,
+      "testQuality": true,
+      "docDrift": true,
+      "injectionDefense": true
+    },
+    "security": { "trustBoundary": true, "severity": true, "alwaysHuman": ["keys", "seals", "digests", "signatures", "addresses"] },
+    "loop": { "retryProgress": true, "errorSalience": true, "maxCycles": 3 },
+    "session": { "endAudit": true, "nudge": true, "maxNudges": 3 }
+  },
+  "policies": {
+    "strict": { "actionThreshold": 0.8, "reviewThreshold": 0.5 },
+    "permissive": { "actionThreshold": 0.9, "reviewThreshold": 0.35 }
+  },
+  "cache": { "dir": ".aiwrangler" },
+  "ledger": { "path": ".aiwrangler/ledger.jsonl" },
+  "webui": { "port": 4478, "bind": "127.0.0.1" },
+  "repos": {
+    "super": "~/Repos/Divechain",
+    "members": [],
+    "reviewed": []
+  }
+}

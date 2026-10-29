@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Deploy from "./pages/Deploy";
 import Logbook from "./pages/Logbook";
 import LogDive from "./pages/LogDive";
+import ImportDives from "./pages/ImportDives";
 import DiveDetail from "./pages/DiveDetail";
 import Profile from "./pages/Profile";
 import DiveSites from "./pages/DiveSites";
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/logbook" element={<Logbook />} />
         <Route path="/logbook/:id" element={<DiveDetail />} />
         <Route path="/log-dive" element={<LogDive />} />
+        <Route path="/import" element={<ImportDives />} />
         <Route path="/attest" element={<Attest />} />
         <Route path="/dive-sites" element={<DiveSites />} />
         <Route path="/tools" element={<DiveTools />} />
