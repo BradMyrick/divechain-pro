@@ -38,59 +38,14 @@ export default function Community() {
         </div>
       </div>
 
-      <div className="flex gap-2 mt-4 mb-6 flex-wrap">
-        {tags.map((tag) => (
-          <button
-            key={tag}
-            onClick={() => setActiveTag(tag)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-all touch-manipulation min-h-[36px] ${activeTag === tag
-              ? "bg-teal/20 text-surf border-teal/30"
-              : "bg-ocean/20 text-text-secondary border-card-border hover:text-gray-200 active:bg-navy/30"
-              }`}
-          >
-            {tag}
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        {filtered.map((post) => (
-          <div key={post.id} className="glass-card p-4 glass-card-hi cursor-pointer touch-manipulation">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-ocean/50 flex items-center justify-center text-xs font-bold text-bismuth shrink-0">
-                {post.initials}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-sm font-medium text-white">{post.author}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${TAG_COLORS[post.tag] || "bg-navy/20 text-text-secondary border-card-border"}`}>
-                    {post.tag}
-                  </span>
-                  <span className="text-[10px] text-text-tertiary ml-auto">{post.time}</span>
-                </div>
-                <h3 className="text-sm font-semibold text-gray-200 mb-1">{post.title}</h3>
-                <p className="text-xs text-text-tertiary line-clamp-2">{post.body}</p>
-                <div className="flex items-center gap-4 mt-2 text-xs text-text-tertiary">
-                  <span className="flex items-center gap-1">
-                    <ThumbsUp className="w-3.5 h-3.5 text-teal" /> {post.likes}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageCircle className="w-3.5 h-3.5 text-bismuth" /> {post.replies}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Community preview banner */}
-      <div className="glass-card p-5 sm:p-6 mt-8 text-center">
+      <div className="glass-card p-5 sm:p-8 text-center mb-6">
         <Megaphone className="w-8 h-8 text-bismuth/50 mx-auto mb-3" />
-        <h3 className="text-sm font-semibold text-white mb-2">Coming Soon: A Community of Verified Divers</h3>
-        <p className="text-xs text-text-tertiary max-w-md mx-auto mb-4">
-          Forums, dive-site conditions reports, and buddy planning — where every voice is backed by a real
-          on-chain logbook. Reputation you can verify, not just a username.
+        <h2 className="text-lg sm:text-xl font-semibold text-white mb-2">
+          Coming Soon: On-Chain Community
+        </h2>
+        <p className="text-sm text-text-secondary max-w-lg mx-auto mb-4">
+          Community forums are coming. Posts will be signed by your wallet and tied to your logbook,
+          so every voice is a real diver.
         </p>
         <p className="text-xs text-text-tertiary max-w-md mx-auto mb-6">
           Get notified when watch sync and community features launch.

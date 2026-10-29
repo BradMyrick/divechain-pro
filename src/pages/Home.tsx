@@ -437,9 +437,11 @@ export default function Home() {
               exports. Your dive profile, gas data, deco obligations, and environmental readings - automatically
               logged on-chain the moment you surface.
             </p>
-            <p className="text-xs text-text-tertiary max-w-md mx-auto">
+            <p className="text-xs text-text-tertiary max-w-md mx-auto mb-6">
               No more manual transcription. No more "I'll log it later." Surface, sync, done.
             </p>
+
+            <NotifyForm source="home-watch-sync" />
           </div>
         </div>
       </section>
@@ -449,7 +451,7 @@ export default function Home() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { icon: Globe, label: "Dive Sites", to: "/dive-sites", sub: "Explore global regions" },
-            { icon: Wrench, label: "Dive Tools", to: "/tools", sub: "NDL, min gas, O\u2082 clock" },
+            { icon: Wrench, label: "Dive Tools", to: "/tools", sub: "NDL, min gas, O₂ clock" },
             { icon: Users, label: "Community", to: "/community", sub: "Connect with divers" },
             { icon: BookOpen, label: "My Logbook", to: "/logbook", sub: "View your dives" },
           ].map((s) => (

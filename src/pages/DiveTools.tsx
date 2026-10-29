@@ -77,15 +77,6 @@ export default function DiveTools() {
       {tool === "o2" && <O2Panel />}
       {tool === "weight" && <WeightPanel />}
       {tool === "nofly" && <NoFlyPanel />}
-
-      <div className="glass-card-inner p-3 mt-4 sm:mt-5 text-[11px] sm:text-xs text-text-tertiary">
-        <p>
-          Planning aids built on public-domain sources: U.S. Navy / NOAA no-decompression tables
-          (46 CFR 197 App. A), NOAA oxygen exposure limits, DAN Flying After Diving (2002) consensus.
-          Not a dive computer, not a substitute for training. If you rely on a tool here, verify it
-          against your tables before you dive it.
-        </p>
-      </div>
     </div>
   );
 }
@@ -490,18 +481,6 @@ function O2Panel() {
           {decoOn && <Note>Deco ppO₂ at 5 m: {pDeco.toFixed(2)} (EAN50 &rarr; 1.25, O₂ &rarr; 1.5)</Note>}
         </div>
       </div>
-      <div className="glass-card-inner p-3 space-y-1">
-        <Note>
-          Target: hold a 5 m safety stop, near-empty tank, breath held at half-lung — that is
-          where the weights have to balance you, not at the surface.
-        </Note>
-        <Note>Ballpark of &plusmn;2 kg / 5 lb at best: suit compression, body composition, and cylinder quirks all move it. Verify in shallow water before diving new gear.</Note>
-      </div>
-    </div>
-  );
-}
-
-/* ================================ NO-FLY ================================ */
 
       <div className="glass-card-inner !p-0 overflow-hidden">
         <table className="w-full text-[11px] sm:text-xs">
