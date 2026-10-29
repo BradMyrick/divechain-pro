@@ -157,8 +157,17 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
                 <p className="section-title mb-1"><Anchor className="w-3.5 h-3.5" />
                   {verify ? "Diver verification" : "Public dive profile"}
                 </p>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white break-all">
-                  {isName ? ref : `${(ref || "Diver").slice(0, 8)}…`}
+                <h1
+                  className="text-2xl sm:text-3xl font-bold text-white break-all"
+                  title={demo ? undefined : ref}
+                >
+                  {demo
+                    ? "Demo Diver"
+                    : isName
+                      ? ref
+                      : isAddress
+                        ? `${ref.slice(0, 6)}…${ref.slice(-4)}`
+                        : ref}
                 </h1>
                 <div className="flex items-center gap-2 flex-wrap mt-2">
                   <span className="pill">{CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}</span>
