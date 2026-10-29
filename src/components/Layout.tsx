@@ -5,6 +5,7 @@ import { useDiveContract } from "../contexts/DiveContractContext";
 import WalletConnectWarning from "./WalletConnectWarning";
 import Footer from "./Footer";
 import { DivechainMark } from "./flags/Flags";
+import { useRouteMeta } from "../hooks/useRouteMeta";
 import { useState } from "react";
 import {
   BookOpen,
@@ -181,6 +182,7 @@ export default function Layout() {
   const { hasContract } = useDiveContract();
   const location = useLocation();
   const [mobileMenu, setMobileMenu] = useState(false);
+  useRouteMeta();
 
   const isActive = (path: string) => {
     if (path === "/logbook") return location.pathname === "/logbook" || location.pathname.startsWith("/logbook/");

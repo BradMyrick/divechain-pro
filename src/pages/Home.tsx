@@ -500,7 +500,11 @@ export default function Home() {
       <section className="text-center py-8 sm:py-10 mb-6">
         <div className="glass-card hairline p-6 sm:p-10 max-w-2xl mx-auto">
           <img
-            src="/DC-LOGO-SCUBA.png"
+            src="/logo-512.webp"
+            width={80}
+            height={80}
+            loading="lazy"
+            decoding="async"
             alt="DiveChain"
             className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 object-contain drop-shadow-[0_0_30px_rgba(34,211,238,0.2)] animate-float"
           />
