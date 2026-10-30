@@ -196,12 +196,12 @@ async function tidePredictions(station: string): Promise<TidePoint[]> {
   return data.predictions;
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== "GET") {
-    return Response.json({ error: "method not allowed" }, { status: 405 });
-  }
+const SUCCESS_HEADERS = {
+  "Cache-Control": "s-maxage=600, stale-while-revalidate=3600",
+};
 
-  const siteId = new URL(req.url).searchParams.get("site");
+export async function GET(request: Request): Promise<Response> {
+  const siteId = new URL(request.url).searchParams.get("site");
   if (!siteId) {
     return Response.json({ error: "missing site" }, { status: 400 });
   }
@@ -210,46 +210,46 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: "unknown site" }, { status: 404 });
   }
 
-  const headers = {
-    "Cache-Control": `public, max-age=0, s-maxage=${FETCH_TTL_MS / 1000}, stale-while-revalidate=3600`,
-  };
-
   const cached = cache.get(site.id);
   if (cached && cached.expires > Date.now()) {
-    return Response.json(cached.body, { headers });
+    return Response.json(cached.body, { headers: SUCCESS_HEADERS });
   }
 
-  const sources: string[] = [];
-  const [forecast, obs, tides] = await Promise.all([
-    site.us
-      ? nwsForecast(site.lat, site.lng, site.nwsZone, site.nwsOffice).then(
-          (p) => (sources.push("NWS"), p),
-          () => undefined,
-        )
-      : Promise.resolve(undefined),
-    site.ndbc
-      ? ndbcObservation(site.ndbc).then(
-          (o) => (sources.push("NDBC"), o),
-          () => undefined,
-        )
-      : Promise.resolve(undefined),
-    site.tides
-      ? tidePredictions(site.tides).then(
-          (p) => (sources.push("NOAA CO-OPS"), p),
-          () => undefined,
-        )
-      : Promise.resolve(undefined),
-  ]);
+  try {
+    const sources: string[] = [];
+    const [forecast, obs, tides] = await Promise.all([
+      site.us
+        ? nwsForecast(site.lat, site.lng, site.nwsZone, site.nwsOffice).then(
+            (p) => (sources.push("NWS"), p),
+            () => undefined,
+          )
+        : Promise.resolve(undefined),
+      site.ndbc
+        ? ndbcObservation(site.ndbc).then(
+            (o) => (sources.push("NDBC"), o),
+            () => undefined,
+          )
+        : Promise.resolve(undefined),
+      site.tides
+        ? tidePredictions(site.tides).then(
+            (p) => (sources.push("NOAA CO-OPS"), p),
+            () => undefined,
+          )
+        : Promise.resolve(undefined),
+    ]);
 
-  const body = {
-    site: site.id,
-    updatedAt: Date.now(),
-    forecast,
-    obs,
-    tides: tides ? { station: site.tides, points: tides } : undefined,
-    sources,
-  };
+    const body = {
+      site: site.id,
+      updatedAt: Date.now(),
+      forecast,
+      obs,
+      tides: tides ? { station: site.tides, points: tides } : undefined,
+      sources,
+    };
 
-  cache.set(site.id, { expires: Date.now() + FETCH_TTL_MS, body });
-  return Response.json(body, { headers });
+    cache.set(site.id, { expires: Date.now() + FETCH_TTL_MS, body });
+    return Response.json(body, { headers: SUCCESS_HEADERS });
+  } catch {
+    return Response.json({ error: "upstream_unavailable" }, { status: 502 });
+  }
 }
