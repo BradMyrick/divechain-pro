@@ -16,9 +16,9 @@ deployment/
 │   ├── DiveLogFactory.sol           # wallet -> logbook registry (create/adopt/release)
 │   ├── SovereignDiveLog.sol         # ERC-8260 reference implementation (owner-only logbook)
 │   └── interfaces/                  # verbatim ERC-8260 reference interfaces
-│       ├── IDiveLogTypes.sol        # enums + structs
-│       ├── IDiveLog.sol             # interface (ERC-165 id 0x321ef561)
-│       ├── IDiveLogTypedData.sol    # EIP-712 typed-data hashing library
+│       ├── IDiveLogTypes.sol        # enums + structs (incl. Saturation mode)
+│       ├── IDiveLog.sol             # interface (ERC-165 id 0x4d89a8f9)
+│       ├── IDiveLogTypedData.sol    # EIP-712 typed-data hashing library (domain version "2")
 │       └── IERC165.sol
 ├── script/
 │   ├── Deploy.s.sol                 # deploys the DiveLogFactory
@@ -60,21 +60,20 @@ sponsored-deployment (meta-transaction) extension: a signed
 `createLogbookFor(owner)` request can never be replayed once the wallet is
 registered.
 
-## Local-reference hardening (pending upstream)
+## Reference-asset provenance
 
-`SovereignDiveLog.sol` carries three small hardening changes on top of the
-current PR #1735 sources (also applied to the ERC fork for merge):
+`SovereignDiveLog.sol` and `interfaces/` are verbatim copies of the redesigned
+ERC-8260 reference assets from ethereum/ERCs#1735 (commit `0122b754`): the thin
+packed header (bottom time + total duration, table/schedule, both repetitive
+groups + surface interval, Saturation mode), required SHA-256 `contentHash`,
+optional EIP-712 attestations bound to that hash (domain `DiveLog`,
+version `"2"`), batch cap 100, void/supersede, and nonce cancellation. The
+three former local hardening deltas (EIP-2 low-`s` rejection, the
+`InvalidBatchSize` bound, date validation) are now part of the standard
+sources, so there are no local deltas anymore.
 
-1. **EIP-2 canonical signatures** - `_recoverSigner` rejects `s` values above
-   half the secp256k1 group order (malleability hygiene).
-2. **Batch bound** - `batchLogDives` reverts with `InvalidBatchSize` on empty
-   batches or batches above `MAX_BATCH_SIZE` (100), preventing block-gas
-   self-DoS.
-3. **Date sanity** - `logDive`/`batchLogDives` revert with `InvalidDate` when
-   `diveDate == 0`.
-
-The `interfaces/` directory is byte-identical to the ERC assets (excluded from
-`forge fmt` via `foundry.toml`).
+The `interfaces/` directory stays byte-identical to the ERC assets (excluded
+from `forge fmt` via `foundry.toml`).
 
 ## Setup
 
