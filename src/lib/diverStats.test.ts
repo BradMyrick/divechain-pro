@@ -1,48 +1,64 @@
 import { describe, it, expect } from "vitest";
 import { computeDiverStats, formatMinutes, isCommercialDive, type NormalizedDive } from "./diverStats";
-import { BreathingGas, DecompressionType, DiveMode, DivePurpose, SuitType, UnitSystem } from "./contracts";
-
+import { DiveMode, DivePurpose, UnitSystem } from "./contracts";
+import { ZERO_BYTES16 } from "./types";
 function mkDive(p: {
   id: number;
-  date: number;
-  depth: number;
-  bt: number;
+  date: number; // uint32 YYYYMMDD
+  depthTenths: number;
+  btSec: number;
   mode?: number;
   purpose?: number;
-  gas?: number;
+  o2Bps?: number;
+  heBps?: number;
   voided?: boolean;
   attestations?: number;
 }): NormalizedDive {
   return {
     id: BigInt(p.id),
     diveDate: p.date,
+    startTime: 0,
+    maxDepth: p.depthTenths,
+    durationSeconds: p.btSec,
+    bottomTimeSeconds: p.btSec,
+    mode: p.mode ?? DiveMode.OCRecreational,
     units: UnitSystem.Metric,
-    data: {
-      leaveSurfaceTime: 0, leaveBottomTime: 0, reachSurfaceTime: 0,
-      bottomTimeMinutes: p.bt,
-      maxDepth: p.depth,
-      averageDepth: Math.round(p.depth * 0.7),
-      mode: p.mode ?? DiveMode.SCUBA,
-      purpose: p.purpose ?? DivePurpose.Recreational,
-      suit: SuitType.Wet,
+    o2Bps: p.o2Bps ?? 2100,
+    heBps: p.heBps ?? 0,
+    tableSchedule: ZERO_BYTES16,
+    surfaceIntervalSeconds: 0,
+    repetitiveGroup: "0x00" as `0x${string}`,
+    repetitiveGroupAfterSI: "0x00" as `0x${string}`,
+    coarseGeohash: "0x00000000" as `0x${string}`,
+    contentHash: ("0x" + "0".repeat(64)) as `0x${string}`,
+    profileURI: "",
+    draft: p.purpose === undefined ? undefined : {
+      diveDate: "2026-01-01",
+      units: UnitSystem.Metric,
+      data: {
+        leaveSurfaceTime: 0, leaveBottomTime: 0, reachSurfaceTime: 0,
+        bottomTimeMinutes: Math.round(p.btSec / 60),
+        maxDepth: p.depthTenths / 10,
+        averageDepth: Math.round((p.depthTenths / 10) * 0.7),
+        mode: p.mode ?? DiveMode.OCRecreational,
+        purpose: p.purpose,
+        suit: 0,
+      },
+      env: {
+        airTemp: 0, waterTemp: 0, currentKnots: 0, bottomType: 0,
+        coords: { latitude: 0, longitude: 0 }, location: "", weatherConditions: "",
+      },
+      decomp: {
+        decompType: 0, totalDecompTimeMinutes: 0,
+        maxDepthAttained: p.depthTenths / 10,
+        tableSchedule: "", repetitiveGroup: "", surfaceIntervalMinutes: 0, newRepetitiveGroup: "",
+      },
+      gas: {
+        gasType: 0, o2Percent: 21, hePercent: 0, n2Percent: 79,
+        cylinderPressureIn: 0, cylinderPressureOut: 0, gasConsumed: 0, bailoutPressure: 0,
+      },
+      remarks: "",
     },
-    env: {
-      airTemp: 0, waterTemp: 0, currentKnots: 0, bottomType: 0,
-      coords: { latitude: 0, longitude: 0 }, location: "", weatherConditions: "",
-    },
-    decomp: {
-      decompType: DecompressionType.NoneDecomp, totalDecompTimeMinutes: 0,
-      maxDepthAttained: p.depth,
-      tableSchedule: ("0x" + "0".repeat(64)) as `0x${string}`,
-      repetitiveGroup: "0x00" as `0x${string}`,
-      surfaceIntervalMinutes: 0,
-      newRepetitiveGroup: "0x00" as `0x${string}`,
-    },
-    gas: {
-      gasType: p.gas ?? BreathingGas.Air, o2Percent: 2090, hePercent: 0, n2Percent: 7910,
-      cylinderPressureIn: 0, cylinderPressureOut: 0, gasConsumed: 0, bailoutPressure: 0,
-    },
-    remarks: "",
     voidInfo: p.voided ? {
       supersededById: 0n, isVoided: true,
       voidedBy: "0x0000000000000000000000000000000000000001" as `0x${string}`,
@@ -58,10 +74,10 @@ function mkDive(p: {
 
 describe("computeDiverStats", () => {
   const dives = [
-    mkDive({ id: 1, date: 100, depth: 18, bt: 40, attestations: 1 }),
-    mkDive({ id: 2, date: 200, depth: 30, bt: 50, gas: BreathingGas.Nitrox }),
-    mkDive({ id: 3, date: 300, depth: 24, bt: 100, mode: DiveMode.SSA, purpose: DivePurpose.Inspection, attestations: 1 }),
-    mkDive({ id: 4, date: 400, depth: 60, bt: 90, voided: true, attestations: 1 }),
+    mkDive({ id: 1, date: 20260101, depthTenths: 180, btSec: 40 * 60, attestations: 1 }),
+    mkDive({ id: 2, date: 20260201, depthTenths: 300, btSec: 50 * 60, o2Bps: 3200 }),
+    mkDive({ id: 3, date: 20260301, depthTenths: 240, btSec: 100 * 60, mode: DiveMode.SurfaceSupplied, purpose: DivePurpose.Inspection, attestations: 1 }),
+    mkDive({ id: 4, date: 20260401, depthTenths: 600, btSec: 90 * 60, voided: true, attestations: 1 }),
   ];
 
   it("excludes voided dives from totals", () => {
@@ -74,8 +90,8 @@ describe("computeDiverStats", () => {
   it("splits bottom time under the two flags", () => {
     const s = computeDiverStats(dives);
     expect(s.recBottomMinutes).toBe(90); // dives 1+2
-    expect(s.commercialBottomMinutes).toBe(100); // dive 3 (SSA)
-    expect(s.ssaDives).toBe(1);
+    expect(s.commercialBottomMinutes).toBe(100); // dive 3 (surface supplied)
+    expect(s.commercialDives).toBe(1);
   });
 
   it("tracks deepest active dive, not voided ones", () => {
@@ -85,18 +101,18 @@ describe("computeDiverStats", () => {
   });
 
   it("compares depths across unit systems before picking the deepest", () => {
-    const metricShallow = mkDive({ id: 10, date: 100, depth: 30, bt: 40 });
-    const imperialDeeper = mkDive({ id: 11, date: 200, depth: 110, bt: 40 });
+    const metricShallow = mkDive({ id: 10, date: 20260101, depthTenths: 300, btSec: 40 * 60 });
+    const imperialDeeper = mkDive({ id: 11, date: 20260201, depthTenths: 1100, btSec: 40 * 60 });
     imperialDeeper.units = UnitSystem.Imperial;
     const s = computeDiverStats([metricShallow, imperialDeeper]);
-    expect(s.deepestDiveId).toBe(11n);
+    expect(s.deepestDiveId).toBe(11n); // 110 ft = 33.5 m > 30 m
     expect(s.maxDepth).toBe(110);
     expect(s.maxDepthUnits).toBe(UnitSystem.Imperial);
 
-    const imperialShallower = mkDive({ id: 12, date: 300, depth: 95, bt: 40 });
+    const imperialShallower = mkDive({ id: 12, date: 20260301, depthTenths: 950, btSec: 40 * 60 });
     imperialShallower.units = UnitSystem.Imperial;
     const s2 = computeDiverStats([metricShallow, imperialShallower]);
-    expect(s2.deepestDiveId).toBe(10n);
+    expect(s2.deepestDiveId).toBe(10n); // 95 ft = 29 m < 30 m
     expect(s2.maxDepth).toBe(30);
     expect(s2.maxDepthUnits).toBe(UnitSystem.Metric);
   });
@@ -107,6 +123,13 @@ describe("computeDiverStats", () => {
     expect(s.attestationCoverage).toBeCloseTo(2 / 3);
   });
 
+  it("labels gas mixes from basis points", () => {
+    const s = computeDiverStats(dives);
+    const labels = s.gasMixes.map((g) => g.label);
+    expect(labels).toContain("Air");
+    expect(labels).toContain("Nitrox 32%");
+  });
+
   it("handles the empty logbook", () => {
     const s = computeDiverStats([]);
     expect(s.totalDives).toBe(0);
@@ -115,16 +138,18 @@ describe("computeDiverStats", () => {
 });
 
 describe("isCommercialDive", () => {
-  it("flags SSA and working purposes as Alpha", () => {
-    expect(isCommercialDive(DiveMode.SSA, DivePurpose.Recreational)).toBe(true);
-    expect(isCommercialDive(DiveMode.SCUBA, DivePurpose.Salvage)).toBe(true);
-    expect(isCommercialDive(DiveMode.SCUBA, DivePurpose.EOD)).toBe(true);
+  it("flags surface-supplied, saturation and working purposes as Alpha", () => {
+    expect(isCommercialDive(DiveMode.SurfaceSupplied, DivePurpose.Recreational)).toBe(true);
+    expect(isCommercialDive(DiveMode.Saturation)).toBe(true);
+    expect(isCommercialDive(DiveMode.OCRecreational, DivePurpose.Salvage)).toBe(true);
+    expect(isCommercialDive(DiveMode.OCRecreational, DivePurpose.EOD)).toBe(true);
   });
 
   it("keeps recreational and photo dives under Diver Down", () => {
-    expect(isCommercialDive(DiveMode.SCUBA, DivePurpose.Recreational)).toBe(false);
-    expect(isCommercialDive(DiveMode.SCUBA, DivePurpose.Photographic)).toBe(false);
-    expect(isCommercialDive(DiveMode.SCUBA, DivePurpose.Training)).toBe(false);
+    expect(isCommercialDive(DiveMode.OCRecreational, DivePurpose.Recreational)).toBe(false);
+    expect(isCommercialDive(DiveMode.OCRecreational, DivePurpose.Photographic)).toBe(false);
+    expect(isCommercialDive(DiveMode.OCRecreational, DivePurpose.Training)).toBe(false);
+    expect(isCommercialDive(DiveMode.OCTechnical, undefined)).toBe(false);
   });
 });
 

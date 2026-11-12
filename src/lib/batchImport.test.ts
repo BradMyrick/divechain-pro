@@ -2,18 +2,17 @@ import { describe, it, expect } from "vitest";
 import {
   parseDiveFile,
   ImportError,
-  validateDiveInput,
-  dedupKeyOf,
+  validateDiveDraft,
+  dedupKeyOfDraft,
+  dedupFieldsOfDraft,
   buildChainIndex,
   analyzeRows,
   chunkInputs,
-  strToBytes32,
-  bytes32ToStr,
   noonUtc,
   DIVES_PER_TX,
   type ParsedRow,
 } from "./batchImport";
-import type { DiveInput } from "./types";
+import type { DiveDraft, DiveHeader } from "./types";
 import {
   UnitSystem,
   DiveMode,
@@ -22,8 +21,10 @@ import {
   BottomType,
   BreathingGas,
   DecompressionType,
+  depthToTenths,
+  stringToYmd,
 } from "./contracts";
-import { ZERO_BYTES32, ZERO_BYTES1 } from "./types";
+import { draftToHeader } from "./diveForm";
 import { diveToStandardJson, divesToBatchJson } from "./batchExport";
 
 // ---------------------------------------------------------------------------
@@ -39,34 +40,10 @@ const stable = (v: unknown): string =>
     return val;
   });
 
-const parsed = (rows: ParsedRow[]): DiveInput[] => rows.map((r) => r.input);
+const parsed = (rows: ParsedRow[]): DiveDraft[] => rows.map((r) => r.input);
 
-// ---------------------------------------------------------------------------
-// encoding helpers
-// ---------------------------------------------------------------------------
-
-describe("bytes32 schedule codec", () => {
-  it("encodes ASCII right-padded with NULs, like Solidity bytes32(bytes(s))", () => {
-    expect(strToBytes32("60/120")).toBe(
-      "0x36302f313230" + "0".repeat(52),
-    );
-    expect(strToBytes32("")).toBe(ZERO_BYTES32);
-  });
-
-  it("round-trips printable schedules", () => {
-    for (const s of ["60/120", "190/140", "UNLIMITED", "40/20 10/10"]) {
-      expect(bytes32ToStr(strToBytes32(s))).toBe(s);
-    }
-    expect(bytes32ToStr(ZERO_BYTES32)).toBe("");
-  });
-
-  it("rejects non-printable bytes on decode", () => {
-    expect(bytes32ToStr("0x" + "ff".repeat(32) as `0x${string}`)).toBe("");
-  });
-});
-
-describe("noonUtc", () => {
-  it("stores date-only fields at 12:00 UTC so every timezone renders the same day", () => {
+describe("noonUtc (the default startTime convention)", () => {
+  it("stores date-only records at 12:00 UTC so every timezone renders the same day", () => {
     expect(noonUtc("2014-02-21")).toBe(1392984000); // 2014-02-21T12:00:00Z
     expect(new Date(noonUtc("2014-02-21") * 1000).toISOString()).toBe("2014-02-21T12:00:00.000Z");
   });
@@ -78,7 +55,7 @@ describe("noonUtc", () => {
 });
 
 // ---------------------------------------------------------------------------
-// evidence-core mapping — parity with divechain-batch-logger gen_batches.py
+// evidence-core mapping - parity with divechain-batch-logger gen_batches.py
 // ---------------------------------------------------------------------------
 
 const EVIDENCE_TWO_SAME_DAY = {
@@ -155,9 +132,9 @@ describe("evidence-core mapping (gen_batches.py parity)", () => {
     expect(result.rows).toHaveLength(3);
   });
 
-  it("maps dive #1 exactly as the Foundry generator did (UTC, Imperial, SSA, dry)", () => {
+  it("maps dive #1 exactly as the Foundry generator did (UTC, Imperial, surface-supplied, dry)", () => {
     const d = rows[0];
-    expect(d.diveDate).toBe(1392984000); // noon UTC, per site convention
+    expect(d.diveDate).toBe("2014-02-21");
     expect(d.units).toBe(UnitSystem.Imperial);
     expect(d.data.leaveSurfaceTime).toBe(1392977400); // 10:10 UTC
     expect(d.data.leaveBottomTime).toBe(1392984660); // 12:11 UTC
@@ -165,13 +142,13 @@ describe("evidence-core mapping (gen_batches.py parity)", () => {
     expect(d.data.bottomTimeMinutes).toBe(119);
     expect(d.data.maxDepth).toBe(57);
     expect(d.data.averageDepth).toBe(57);
-    expect(d.data.mode).toBe(DiveMode.SSA);
+    expect(d.data.mode).toBe(DiveMode.SurfaceSupplied);
     expect(d.data.purpose).toBe(DivePurpose.Repair); // "...TIMBER REPLACEMENT"
     expect(d.data.suit).toBe(SuitType.Dry);
     expect(d.env.location).toBe("Norco / Garyville River Terminal, Mississippi River, Louisiana");
     expect(d.env.bottomType).toBe(BottomType.Other);
     expect(d.decomp.decompType).toBe(DecompressionType.Standard); // "60/120"
-    expect(d.decomp.tableSchedule).toBe(strToBytes32("60/120"));
+    expect(d.decomp.tableSchedule).toBe("USN 60/120"); // tokenized for the v2 header
     expect(d.decomp.totalDecompTimeMinutes).toBe(96); // 215 - 119
     expect(d.decomp.maxDepthAttained).toBe(57);
     expect(d.decomp.surfaceIntervalMinutes).toBe(0); // first dive of the day
@@ -197,7 +174,7 @@ describe("evidence-core mapping (gen_batches.py parity)", () => {
   it("resets the surface interval on a new day and maps UNLIMITED/INSPECT", () => {
     expect(rows[2].decomp.surfaceIntervalMinutes).toBe(0);
     expect(rows[2].decomp.decompType).toBe(DecompressionType.NoneDecomp); // UNLIMITED
-    expect(rows[2].decomp.tableSchedule).toBe(strToBytes32("UNLIMITED"));
+    expect(rows[2].decomp.tableSchedule).toBe("USN"); // table used, no schedule
     expect(rows[2].data.purpose).toBe(DivePurpose.Inspection); // "HULL INSPECTION"
     expect(rows[2].data.maxDepth).toBe(60);
   });
@@ -237,11 +214,11 @@ describe("evidence-core mapping (gen_batches.py parity)", () => {
 // ---------------------------------------------------------------------------
 
 describe("Divechain Batch JSON parsing", () => {
-  it("parses a bare array with enum names, clock times and defaults", () => {
+  it("parses a bare array with enum names, clock times and defaults (v1 aliases map)", () => {
     const doc = [{
       date: "2024-07-01",
       units: "metric",
-      mode: "scuba",
+      mode: "scuba", // v1 alias -> OC recreational
       purpose: "recreational",
       maxDepth: 18,
       bottomTimeMinutes: 47,
@@ -252,8 +229,9 @@ describe("Divechain Batch JSON parsing", () => {
     const res = parseDiveFile(JSON.stringify(doc));
     expect(res.format).toBe("divechain-json");
     const d = res.rows[0].input;
+    expect(d.diveDate).toBe("2024-07-01");
     expect(d.units).toBe(UnitSystem.Metric);
-    expect(d.data.mode).toBe(DiveMode.SCUBA);
+    expect(d.data.mode).toBe(DiveMode.OCRecreational);
     expect(d.data.purpose).toBe(DivePurpose.Recreational);
     expect(d.data.maxDepth).toBe(18);
     expect(d.data.averageDepth).toBe(18); // defaults to max
@@ -261,6 +239,7 @@ describe("Divechain Batch JSON parsing", () => {
     expect(d.data.leaveBottomTime).toBe(0); // absent -> 0
     expect(d.env.location).toBe("Blue Hole, Belize");
     expect(d.env.waterTemp).toBe(28);
+    expect(d.env.coords).toEqual({ latitude: 0, longitude: 0 });
     expect(d.gas.o2Percent).toBe(21); // default air
     expect(d.gas.n2Percent).toBe(79);
     expect(d.decomp.decompType).toBe(DecompressionType.NoneDecomp);
@@ -269,8 +248,8 @@ describe("Divechain Batch JSON parsing", () => {
   it("accepts the export wrapper and full ISO times with offsets", () => {
     const doc = {
       format: "divechain-batch-json",
-      version: 1,
-      exportedAt: "2026-10-29T00:00:00Z",
+      version: 2,
+      exportedAt: "2026-11-12T00:00:00Z",
       dives: [{
         date: "2014-02-21",
         times: { leftSurface: "2014-02-21T10:10:00Z", leftBottom: "2014-02-21T07:11:00-05:00", reachedSurface: "2014-02-21T13:45:00Z" },
@@ -284,9 +263,21 @@ describe("Divechain Batch JSON parsing", () => {
     expect(d.data.reachSurfaceTime).toBe(1392990300);
   });
 
+  it("accepts the v2 mode tokens and maps legacy aliases", () => {
+    const doc = [
+      { date: "2020-01-01", mode: "ccr", maxDepth: 40, bottomTimeMinutes: 30 },
+      { date: "2020-01-02", mode: "ssa", maxDepth: 30, bottomTimeMinutes: 40 },
+      { date: "2020-01-03", mode: "freedive", maxDepth: 15, bottomTimeMinutes: 2 },
+    ];
+    const rows = parsed(parseDiveFile(JSON.stringify(doc)).rows);
+    expect(rows[0].data.mode).toBe(DiveMode.CCR);
+    expect(rows[1].data.mode).toBe(DiveMode.SurfaceSupplied);
+    expect(rows[2].data.mode).toBe(DiveMode.Freedive);
+  });
+
   it("accepts enum numbers, label strings and canonical names", () => {
     const doc = [{
-      date: "2020-01-01", units: 1, mode: "SSA", purpose: "Surface Decompression O2" as unknown,
+      date: "2020-01-01", units: 1, mode: "surface supplied", purpose: "Surface Decompression O2" as unknown,
       suit: "hot-water", maxDepth: 10, bottomTimeMinutes: 30,
       gas: { type: "oxygen" }, deco: { type: "saturation" },
       environment: { bottomType: "coral" },
@@ -294,7 +285,7 @@ describe("Divechain Batch JSON parsing", () => {
     const res = parseDiveFile(JSON.stringify(doc));
     const d = res.rows[0].input;
     expect(d.units).toBe(UnitSystem.Metric);
-    expect(d.data.mode).toBe(DiveMode.SSA);
+    expect(d.data.mode).toBe(DiveMode.SurfaceSupplied);
     expect(d.data.purpose).toBe(DivePurpose.Recreational); // a deco label is not a purpose -> site default + warning
     expect(res.rows[0].warnings.join(" ")).toContain("purpose");
     expect(d.data.suit).toBe(SuitType.HotWater);
@@ -306,7 +297,7 @@ describe("Divechain Batch JSON parsing", () => {
   it("flags unrecognized enum values instead of failing silently", () => {
     const doc = [{ date: "2020-01-01", mode: "rebreather", maxDepth: 10, bottomTimeMinutes: 30 }];
     const res = parseDiveFile(JSON.stringify(doc));
-    expect(res.rows[0].input.data.mode).toBe(DiveMode.SCUBA);
+    expect(res.rows[0].input.data.mode).toBe(DiveMode.OCRecreational);
     expect(res.rows[0].warnings.join(" ")).toContain("rebreather");
   });
 
@@ -332,7 +323,7 @@ describe("heuristic JSON sniffing", () => {
     const res = parseDiveFile(JSON.stringify(doc));
     expect(res.format).toBe("heuristic-json");
     const rows = parsed(res.rows);
-    expect(rows[0].diveDate).toBe(noonUtc("2021-06-01"));
+    expect(rows[0].diveDate).toBe("2021-06-01");
     expect(rows[0].units).toBe(UnitSystem.Imperial);
     expect(rows[0].data.maxDepth).toBe(30);
     expect(rows[0].data.bottomTimeMinutes).toBe(40);
@@ -373,26 +364,26 @@ describe("heuristic JSON sniffing", () => {
 });
 
 // ---------------------------------------------------------------------------
-// validation — mirrors the contract guards (SPEC-6 / PAPER-IX)
+// validation - mirrors the contract guards (SPEC-6 / PAPER-IX)
 // ---------------------------------------------------------------------------
 
-const validInput = (): DiveInput => ({
-  diveDate: noonUtc("2015-06-15"),
+const validDraft = (): DiveDraft => ({
+  diveDate: "2015-06-15",
   units: UnitSystem.Imperial,
   data: {
     leaveSurfaceTime: 1434367200, leaveBottomTime: 1434370800, reachSurfaceTime: 1434373200,
     bottomTimeMinutes: 60, maxDepth: 55, averageDepth: 40,
-    mode: DiveMode.SSA, purpose: DivePurpose.Inspection, suit: SuitType.Dry,
+    mode: DiveMode.SurfaceSupplied, purpose: DivePurpose.Inspection, suit: SuitType.Dry,
   },
   env: {
     airTemp: 80, waterTemp: 65, currentKnots: 1, bottomType: BottomType.Rock,
-    coords: { latitude: 29950000, longitude: -90100000 },
+    coords: { latitude: 29.95, longitude: -90.1 },
     location: "Test site", weatherConditions: "Clear",
   },
   decomp: {
     decompType: DecompressionType.Standard, totalDecompTimeMinutes: 20, maxDepthAttained: 55,
-    tableSchedule: strToBytes32("60/120"), repetitiveGroup: ZERO_BYTES1,
-    surfaceIntervalMinutes: 45, newRepetitiveGroup: ZERO_BYTES1,
+    tableSchedule: "USN 60/120", repetitiveGroup: "",
+    surfaceIntervalMinutes: 45, newRepetitiveGroup: "",
   },
   gas: {
     gasType: BreathingGas.Air, o2Percent: 21, hePercent: 0, n2Percent: 79,
@@ -401,47 +392,78 @@ const validInput = (): DiveInput => ({
   remarks: "test dive",
 });
 
-describe("validateDiveInput", () => {
+describe("validateDiveDraft", () => {
   it("accepts a valid record", () => {
-    expect(validateDiveInput(validInput())).toEqual([]);
+    expect(validateDiveDraft(validDraft())).toEqual([]);
   });
 
   it("rejects exactly what the contract would revert on", () => {
-    const zeroDepth = validInput();
+    const zeroDepth = validDraft();
     zeroDepth.data.maxDepth = 0;
-    expect(validateDiveInput(zeroDepth).join(" ")).toContain("depth");
+    expect(validateDiveDraft(zeroDepth).join(" ")).toContain("depth");
 
-    const zeroBt = validInput();
+    const zeroBt = validDraft();
     zeroBt.data.bottomTimeMinutes = 0;
-    expect(validateDiveInput(zeroBt).join(" ")).toContain("Bottom time");
+    expect(validateDiveDraft(zeroBt).join(" ")).toContain("Bottom time");
 
-    const noDate = validInput();
-    noDate.diveDate = 0;
-    expect(validateDiveInput(noDate).join(" ")).toContain("date");
+    const noDate = validDraft();
+    noDate.diveDate = "";
+    expect(validateDiveDraft(noDate).join(" ")).toContain("date");
+
+    const pre1970 = validDraft();
+    pre1970.diveDate = "1969-12-31";
+    expect(validateDiveDraft(pre1970).join(" ")).toContain("1970");
   });
 
-  it("rejects future dates — you cannot log a dive that has not happened", () => {
-    const future = validInput();
-    future.diveDate = noonUtc("2999-01-01");
-    expect(validateDiveInput(future).join(" ")).toContain("future");
+  it("rejects future dates - you cannot log a dive that has not happened", () => {
+    const future = validDraft();
+    future.diveDate = "2999-01-01";
+    expect(validateDiveDraft(future).join(" ")).toContain("future");
+  });
+
+  it("enforces the v2 table schedule rules", () => {
+    const unknownToken = validDraft();
+    unknownToken.decomp.tableSchedule = "60/120"; // missing token
+    expect(validateDiveDraft(unknownToken).join(" ")).toContain("known token");
+
+    const tooLong = validDraft();
+    tooLong.decomp.tableSchedule = "USN 60/120-extra1"; // 17 chars, single schedule
+    expect(validateDiveDraft(tooLong).join(" ")).toContain("16 characters");
+  });
+
+  it("enforces the repetitive-group cross-field rules", () => {
+    const letterWithoutTable = validDraft();
+    letterWithoutTable.decomp.tableSchedule = "";
+    letterWithoutTable.decomp.repetitiveGroup = "F";
+    expect(validateDiveDraft(letterWithoutTable).join(" ")).toContain("requires a table schedule");
+
+    const afterSiWithoutInterval = validDraft();
+    afterSiWithoutInterval.decomp.newRepetitiveGroup = "D";
+    afterSiWithoutInterval.decomp.surfaceIntervalMinutes = 0;
+    expect(validateDiveDraft(afterSiWithoutInterval).join(" ")).toContain("surface interval");
+
+    const badLetter = validDraft();
+    badLetter.decomp.repetitiveGroup = "5";
+    expect(validateDiveDraft(badLetter).join(" ")).toContain("single letter");
   });
 
   it("flags sanity problems that would still encode", () => {
-    const avgTooDeep = validInput();
-    avgTooDeep.data.averageDepth = 80; // > max 55
-    expect(validateDiveInput(avgTooDeep).join(" ")).toContain("Average depth");
+    const badGas = validDraft();
+    badGas.gas.o2Percent = 80;
+    badGas.gas.hePercent = 40; // 120 > 100
+    expect(validateDiveDraft(badGas).join(" ")).toContain("100%");
 
-    const badGas = validInput();
-    badGas.gas.n2Percent = 90; // 21 + 0 + 90 > 100
-    expect(validateDiveInput(badGas).join(" ")).toContain("100%");
-
-    const longBt = validInput();
+    const longBt = validDraft();
     longBt.data.bottomTimeMinutes = 1500; // > 24h
-    expect(validateDiveInput(longBt).join(" ")).toContain("24 h");
+    expect(validateDiveDraft(longBt).join(" ")).toContain("24 h");
 
-    const absurdDepth = validInput();
+    const absurdDepth = validDraft();
     absurdDepth.data.maxDepth = 5000; // 5000 ft is not a thing
-    expect(validateDiveInput(absurdDepth).join(" ")).toContain("beyond any recorded dive");
+    expect(validateDiveDraft(absurdDepth).join(" ")).toContain("beyond any recorded dive");
+
+    const timesInverted = validDraft();
+    timesInverted.data.reachSurfaceTime = timesInverted.data.leaveSurfaceTime - 60;
+    expect(validateDiveDraft(timesInverted).join(" ")).toContain("after the leave-surface");
   });
 });
 
@@ -451,41 +473,44 @@ describe("validateDiveInput", () => {
 
 describe("dedup key", () => {
   it("is unit-aware: 57 ft must never collide with 57 m", () => {
-    const imperial = validInput();
-    const metric = validInput();
+    const imperial = validDraft();
+    const metric = validDraft();
     metric.units = UnitSystem.Metric;
-    expect(dedupKeyOf(imperial)).not.toBe(dedupKeyOf(metric));
+    expect(dedupKeyOfDraft(imperial)).not.toBe(dedupKeyOfDraft(metric));
   });
 
-  it("buckets by UTC day (noon convention matches midnight of the same day)", () => {
-    const a = validInput();
-    a.diveDate = 1392940800; // 2014-02-21T00:00:00Z (Foundry-era encoding)
-    const b = validInput();
-    b.diveDate = 1392984000; // 2014-02-21T12:00:00Z (site convention)
-    expect(dedupKeyOf(a)).toBe(dedupKeyOf(b));
+  it("derives the same header fields the chain will store", () => {
+    const fields = dedupFieldsOfDraft(validDraft());
+    expect(fields.diveDate).toBe(stringToYmd("2015-06-15"));
+    expect(fields.maxDepth).toBe(depthToTenths(55));
+    expect(fields.bottomTimeSeconds).toBe(60 * 60); // lb - ls
   });
 });
 
 describe("analyzeRows", () => {
-  const chainIndex = buildChainIndex([
-    { id: 7n, diveDate: noonUtc("2015-06-15"), units: UnitSystem.Imperial, bottomTimeMinutes: 60, maxDepth: 55 },
-  ]);
+  const validHeader = {
+    diveDate: stringToYmd("2015-06-15"),
+    units: UnitSystem.Imperial,
+    bottomTimeSeconds: 3600,
+    maxDepth: 550,
+  };
+  const chainIndex = buildChainIndex([{ id: 7n, ...validHeader }]);
 
   it("marks on-chain matches with the dive id", () => {
-    const rows = analyzeRows([{ key: "a", sourceIndex: 1, input: validInput(), warnings: [] }], chainIndex);
+    const rows = analyzeRows([{ key: "a", sourceIndex: 1, input: validDraft(), warnings: [] }], chainIndex);
     expect(rows[0].status).toBe("on-chain");
     expect(rows[0].matchedDiveId).toBe(7n);
   });
 
   it("first occurrence wins within the file; later copies are duplicates", () => {
-    const r = (input: DiveInput): ParsedRow => ({ key: `k${Math.random()}`, sourceIndex: 1, input, warnings: [] });
-    const rows = analyzeRows([r(validInput()), r(validInput())], new Map());
+    const r = (input: DiveDraft): ParsedRow => ({ key: `k${Math.random()}`, sourceIndex: 1, input, warnings: [] });
+    const rows = analyzeRows([r(validDraft()), r(validDraft())], new Map());
     expect(rows[0].status).toBe("new");
     expect(rows[1].status).toBe("duplicate");
   });
 
   it("invalid rows carry their issues", () => {
-    const bad = validInput();
+    const bad = validDraft();
     bad.data.maxDepth = 0;
     const rows = analyzeRows([{ key: "a", sourceIndex: 1, input: bad, warnings: [] }], new Map());
     expect(rows[0].status).toBe("invalid");
@@ -493,8 +518,8 @@ describe("analyzeRows", () => {
   });
 
   it("prefers the chain answer over the in-file duplicate flag", () => {
-    const r = (input: DiveInput): ParsedRow => ({ key: `k${Math.random()}`, sourceIndex: 1, input, warnings: [] });
-    const rows = analyzeRows([r(validInput()), r(validInput())], chainIndex);
+    const r = (input: DiveDraft): ParsedRow => ({ key: `k${Math.random()}`, sourceIndex: 1, input, warnings: [] });
+    const rows = analyzeRows([r(validDraft()), r(validDraft())], chainIndex);
     expect(rows.map((x) => x.status)).toEqual(["on-chain", "on-chain"]);
   });
 });
@@ -520,81 +545,90 @@ describe("chunkInputs", () => {
 // ---------------------------------------------------------------------------
 
 describe("Divechain Batch JSON round trip", () => {
-  it("exported rows re-import to the exact same on-chain payload", () => {
-    const originals: DiveInput[] = [
-      validInput(),
-      (() => {
-        // A second record exercising every optional branch.
-        const d = validInput();
-        d.units = UnitSystem.Metric;
-        d.diveDate = noonUtc("2018-11-30");
-        d.data = {
-          leaveSurfaceTime: Date.UTC(2018, 10, 30, 8, 5) / 1000,
-          leaveBottomTime: Date.UTC(2018, 10, 30, 8, 55) / 1000,
-          reachSurfaceTime: Date.UTC(2018, 10, 30, 9, 20) / 1000,
-          bottomTimeMinutes: 50, maxDepth: 32, averageDepth: 18,
-          mode: DiveMode.SCUBA, purpose: DivePurpose.Photographic, suit: SuitType.Wet,
-        };
-        d.env = {
-          airTemp: 27, waterTemp: 26, currentKnots: -1, bottomType: BottomType.Wreck,
-          coords: { latitude: 18320000, longitude: -87120000 },
-          location: " Cayman Trench ", weatherConditions: "2 ft chop",
-        };
-        d.decomp = {
-          decompType: DecompressionType.SurfaceDecompO2, totalDecompTimeMinutes: 12,
-          maxDepthAttained: 40, tableSchedule: strToBytes32("190/140"),
-          repetitiveGroup: "0x43" as `0x${string}`, // 'C'
-          surfaceIntervalMinutes: 95, newRepetitiveGroup: "0x44" as `0x${string}`, // 'D'
-        };
-        d.gas = {
-          gasType: BreathingGas.Nitrox, o2Percent: 32, hePercent: 0, n2Percent: 68,
-          cylinderPressureIn: 2900, cylinderPressureOut: 950, gasConsumed: 1950, bailoutPressure: 0,
-        };
-        d.remarks = "Night dive, octopus at the anchor chain";
-        return d;
-      })(),
-      (() => {
-        // A minimal record: everything optional stays default.
-        const d = validInput();
-        d.diveDate = noonUtc("2010-03-03");
-        d.data.leaveSurfaceTime = 0;
-        d.data.leaveBottomTime = 0;
-        d.data.reachSurfaceTime = 0;
-        d.data.averageDepth = 22;
-        d.data.mode = DiveMode.SCUBA;
-        d.data.purpose = DivePurpose.Recreational;
-        d.data.suit = SuitType.Wet;
-        d.env = {
-          airTemp: 0, waterTemp: 0, currentKnots: 0, bottomType: BottomType.Other,
-          coords: { latitude: 0, longitude: 0 }, location: "", weatherConditions: "",
-        };
-        d.decomp = {
-          decompType: DecompressionType.NoneDecomp, totalDecompTimeMinutes: 0, maxDepthAttained: 22,
-          tableSchedule: ZERO_BYTES32, repetitiveGroup: ZERO_BYTES1,
-          surfaceIntervalMinutes: 0, newRepetitiveGroup: ZERO_BYTES1,
-        };
-        d.gas = {
-          gasType: BreathingGas.Air, o2Percent: 21, hePercent: 0, n2Percent: 79,
-          cylinderPressureIn: 0, cylinderPressureOut: 0, gasConsumed: 0, bailoutPressure: 0,
-        };
-        d.remarks = "";
-        return d;
-      })(),
-    ];
+  const mkDive = (draft: DiveDraft): DiveHeader & { draft: DiveDraft } => ({
+    ...draftToHeader(draft),
+    id: 0n,
+    draft,
+  } as DiveHeader & { draft: DiveDraft });
 
-    const file = divesToBatchJson(originals);
+  it("exported rows re-import to the same draft and re-derive the same header", () => {
+    const second = validDraft();
+    second.units = UnitSystem.Metric;
+    second.diveDate = "2018-11-30";
+    second.data = {
+      leaveSurfaceTime: Date.UTC(2018, 10, 30, 8, 5) / 1000,
+      leaveBottomTime: Date.UTC(2018, 10, 30, 8, 55) / 1000,
+      reachSurfaceTime: Date.UTC(2018, 10, 30, 9, 20) / 1000,
+      bottomTimeMinutes: 50, maxDepth: 32, averageDepth: 18,
+      mode: DiveMode.OCRecreational, purpose: DivePurpose.Photographic, suit: SuitType.Wet,
+    };
+    second.env = {
+      airTemp: 27, waterTemp: 26, currentKnots: -1, bottomType: BottomType.Wreck,
+      coords: { latitude: 18.32, longitude: -87.12 },
+      location: " Cayman Trench ", weatherConditions: "2 ft chop",
+    };
+    second.decomp = {
+      decompType: DecompressionType.SurfaceDecompO2, totalDecompTimeMinutes: 12,
+      maxDepthAttained: 40, tableSchedule: "USN 190/140",
+      repetitiveGroup: "C",
+      surfaceIntervalMinutes: 95, newRepetitiveGroup: "D",
+    };
+    second.gas = {
+      gasType: BreathingGas.Nitrox, o2Percent: 32, hePercent: 0, n2Percent: 68,
+      cylinderPressureIn: 2900, cylinderPressureOut: 950, gasConsumed: 1950, bailoutPressure: 0,
+    };
+    second.remarks = "Night dive, octopus at the anchor chain";
+
+    const third = validDraft();
+    third.diveDate = "2010-03-03";
+    third.data.leaveSurfaceTime = 0;
+    third.data.leaveBottomTime = 0;
+    third.data.reachSurfaceTime = 0;
+    third.data.averageDepth = 22;
+    third.data.mode = DiveMode.OCRecreational;
+    third.data.purpose = DivePurpose.Recreational;
+    third.data.suit = SuitType.Wet;
+    third.env = {
+      airTemp: 0, waterTemp: 0, currentKnots: 0, bottomType: BottomType.Other,
+      coords: { latitude: 0, longitude: 0 }, location: "", weatherConditions: "",
+    };
+    third.decomp = {
+      decompType: DecompressionType.NoneDecomp, totalDecompTimeMinutes: 0, maxDepthAttained: 22,
+      tableSchedule: "", repetitiveGroup: "", surfaceIntervalMinutes: 0, newRepetitiveGroup: "",
+    };
+    third.gas = {
+      gasType: BreathingGas.Air, o2Percent: 21, hePercent: 0, n2Percent: 79,
+      cylinderPressureIn: 0, cylinderPressureOut: 0, gasConsumed: 0, bailoutPressure: 0,
+    };
+    third.remarks = "";
+
+    const originals = [validDraft(), second, third];
+
+    const file = divesToBatchJson(originals.map((d, i) => ({ ...mkDive(d), id: BigInt(i + 1) })));
     expect(file.format).toBe("divechain-batch-json");
+    expect(file.version).toBe(2);
     expect(file.dives).toHaveLength(3);
 
     const back = parseDiveFile(JSON.stringify(file));
     expect(back.format).toBe("divechain-json");
     for (let i = 0; i < originals.length; i++) {
+      // The draft round-trips, and the header re-derives identically (which
+      // means the deterministic UDDF - and its content hash - do too).
       expect(stable(back.rows[i].input)).toBe(stable(originals[i]));
+      const rederived = draftToHeader(back.rows[i].input);
+      const originalHeader = draftToHeader(originals[i]);
+      expect(rederived.diveDate).toBe(originalHeader.diveDate);
+      expect(rederived.maxDepth).toBe(originalHeader.maxDepth);
+      expect(rederived.bottomTimeSeconds).toBe(originalHeader.bottomTimeSeconds);
+      expect(rederived.tableSchedule).toBe(originalHeader.tableSchedule);
+      expect(rederived.o2Bps).toBe(originalHeader.o2Bps);
+      expect(rederived.heBps).toBe(originalHeader.heBps);
+      expect(rederived.surfaceIntervalSeconds).toBe(originalHeader.surfaceIntervalSeconds);
     }
   });
 
   it("omits default fields so hand-written files stay small", () => {
-    const d = validInput();
+    const d = validDraft();
     d.data.averageDepth = d.data.maxDepth;
     d.data.leaveSurfaceTime = 0;
     d.data.leaveBottomTime = 0;
@@ -605,8 +639,8 @@ describe("Divechain Batch JSON round trip", () => {
     };
     d.decomp = {
       decompType: DecompressionType.NoneDecomp, totalDecompTimeMinutes: 0,
-      maxDepthAttained: d.data.maxDepth, tableSchedule: ZERO_BYTES32,
-      repetitiveGroup: ZERO_BYTES1, surfaceIntervalMinutes: 0, newRepetitiveGroup: ZERO_BYTES1,
+      maxDepthAttained: d.data.maxDepth, tableSchedule: "",
+      repetitiveGroup: "", surfaceIntervalMinutes: 0, newRepetitiveGroup: "",
     };
     d.gas = {
       gasType: BreathingGas.Air, o2Percent: 21, hePercent: 0, n2Percent: 79,
@@ -614,15 +648,25 @@ describe("Divechain Batch JSON round trip", () => {
     };
     d.remarks = "";
 
-    const json = diveToStandardJson(d);
+    const json = diveToStandardJson({ ...draftToHeader(d), id: 1n, draft: d });
     expect(json).toEqual({
       date: "2015-06-15",
       units: "imperial",
-      mode: "ssa",
+      mode: "surface-supplied",
       purpose: "inspection",
       suit: "dry",
       maxDepth: 55,
       bottomTimeMinutes: 60,
     });
+  });
+
+  it("exports header-only dives (no local profile) with the fields the chain holds", () => {
+    const h = draftToHeader(validDraft());
+    const json = diveToStandardJson({ ...h, id: 1n });
+    expect(json.date).toBe("2015-06-15");
+    expect(json.mode).toBe("surface-supplied");
+    expect(json.maxDepth).toBe(55);
+    expect(json.bottomTimeMinutes).toBe(60);
+    expect(json.purpose).toBeUndefined();
   });
 });

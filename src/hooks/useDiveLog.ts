@@ -1,11 +1,13 @@
+import { useMemo } from "react";
 import {
   useReadContract,
+  useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
   useAccount,
 } from "wagmi";
 import { SOVEREIGN_DIVE_LOG_ABI } from "../lib/contracts";
-import type { DiveInput } from "../lib/types";
+import type { DiveInput, Attestation } from "../lib/types";
 
 export function useDiveLog(contractAddress: `0x${string}` | undefined) {
   const { address } = useAccount();
@@ -19,9 +21,8 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
       query: { enabled: !!contractAddress },
     });
 
-  const { data: diveCount } = useRead("diveCount");
+  const { data: diveCount } = useRead("getDiveCount");
   const { data: owner } = useRead("owner");
-  const { data: allDiveIds } = useRead("getAllDiveIds");
 
   const useDive = (diveId: bigint) =>
     useReadContract({
@@ -41,14 +42,41 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
       query: { enabled: !!contractAddress && diveId > 0n },
     });
 
-  const useAttestations = (diveId: bigint) =>
-    useReadContract({
+  /** Attestations for a dive via the bounded v2 accessors: count, then each
+   *  index. Returns the same Attestation[] shape callers always had. */
+  const useAttestations = (diveId: bigint) => {
+    const { data: count, isLoading } = useReadContract({
       address: contractAddress,
       abi: SOVEREIGN_DIVE_LOG_ABI,
-      functionName: "getAttestations",
+      functionName: "attestationCount",
       args: [diveId],
       query: { enabled: !!contractAddress && diveId > 0n },
     });
+    const n = count !== undefined ? Number(count) : 0;
+    const contracts = useMemo(
+      () =>
+        Array.from({ length: n }, (_, j) => ({
+          address: contractAddress,
+          abi: SOVEREIGN_DIVE_LOG_ABI,
+          functionName: "getAttestation",
+          args: [diveId, BigInt(j)],
+        })),
+      [diveId, n],
+    );
+    const { data: raw } = useReadContracts({
+      contracts: contracts as never,
+      query: { enabled: !!contractAddress && diveId > 0n && n > 0 },
+    });
+    const attestations = useMemo(() => {
+      const results =
+        raw as readonly { status: "success" | "failure"; result?: unknown }[] | undefined;
+      if (!results) return [] as Attestation[];
+      return results
+        .filter((r) => r.status === "success" && r.result)
+        .map((r) => r.result as Attestation);
+    }, [raw]);
+    return { attestations, isLoading };
+  };
 
   const useAttesterNonce = (attester: `0x${string}` | undefined) =>
     useReadContract({
@@ -95,14 +123,20 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
     });
   };
 
-  /** Relay an EIP-712 attestation. Any account may submit; attester is recovered from the signature. */
-  const attestDive = (diveId: bigint, nonce: bigint, signature: `0x${string}`) => {
+  /** Relay an EIP-712 attestation. Any account may submit; the attester is
+   *  recovered from the signature, which binds the stored contentHash. */
+  const attestDive = (
+    diveId: bigint,
+    contentHash: `0x${string}`,
+    nonce: bigint,
+    signature: `0x${string}`,
+  ) => {
     if (!contractAddress) return;
     writeContract({
       address: contractAddress,
       abi: SOVEREIGN_DIVE_LOG_ABI,
       functionName: "attestDive",
-      args: [diveId, nonce, signature],
+      args: [diveId, contentHash, nonce, signature],
     });
   };
 
@@ -112,7 +146,6 @@ export function useDiveLog(contractAddress: `0x${string}` | undefined) {
   return {
     diveCount: diveCount as bigint | undefined,
     owner: owner as `0x${string}` | undefined,
-    allDiveIds: allDiveIds as bigint[] | undefined,
     isOwner: !!isOwner,
     useDive,
     useVoidInfo,

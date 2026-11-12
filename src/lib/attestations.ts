@@ -1,18 +1,22 @@
-// EIP-712 typed-data helpers for ERC-8260 attestations.
+// EIP-712 typed-data helpers for ERC-8260 v2 attestations.
 // Must match deployment/src/interfaces/IDiveLogTypedData.sol exactly:
 //   domain  : EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)
-//             name="DiveLog", version="1"
-//   type    : Attestation(uint256 diveId,address verifyingContract,uint256 nonce)
+//             name="DiveLog", version="2"
+//   type    : Attestation(uint256 diveId,bytes32 contentHash,address verifyingContract,uint256 nonce)
+//
+// The domain version and typed-data layout are one-way doors: every deployed
+// contract and the ERC standard itself depend on them.
 
 export const DIVELOG_EIP712_DOMAIN = {
   name: "DiveLog",
-  version: "1",
+  version: "2",
 } as const;
 
 /** viem/wagmi typed-data definition for the Attestation struct. */
 export const ATTESTATION_TYPES = {
   Attestation: [
     { name: "diveId", type: "uint256" },
+    { name: "contentHash", type: "bytes32" },
     { name: "verifyingContract", type: "address" },
     { name: "nonce", type: "uint256" },
   ],
@@ -24,11 +28,14 @@ export interface AttestationRequest {
   diveId: bigint;
 }
 
-/** Build the wagmi signTypedData payload for a buddy attesting a dive. */
+/** Build the wagmi signTypedData payload for a buddy attesting a dive.
+ *  `contentHash` is the dive's stored SHA-256 (read from getDive), so the
+ *  signature binds to the exact UDDF profile bytes, not just the id. */
 export function buildAttestationTypedData(
   chainId: number,
   verifyingContract: `0x${string}`,
   diveId: bigint,
+  contentHash: `0x${string}`,
   nonce: bigint,
 ) {
   return {
@@ -41,13 +48,16 @@ export function buildAttestationTypedData(
     primaryType: "Attestation" as const,
     message: {
       diveId,
+      contentHash,
       verifyingContract,
       nonce,
     },
   };
 }
 
-/** Encode an attestation request into a shareable URL search-string. */
+/** Encode an attestation request into a shareable URL search-string. The
+ *  attesting device reads the stored contentHash from the logbook, so the
+ *  URL stays short. */
 export function buildAttestationRequestParams(req: AttestationRequest): URLSearchParams {
   const p = new URLSearchParams();
   p.set("chain", String(req.chainId));

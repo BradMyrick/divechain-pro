@@ -42,7 +42,7 @@ export default function About() {
         <p className="text-sm sm:text-base text-text-secondary leading-relaxed mb-4">
           ERC-8260 (Draft) defines a common interface for on-chain dive logs. DiveChain is the
           reference app. The <code className="text-surf text-xs">IDiveLog</code> interface ID is{" "}
-          <code className="text-surf text-xs">0x321ef561</code>.
+          <code className="text-surf text-xs">0x4d89a8f9</code>.
         </p>
         <ul className="space-y-2 text-sm">
           {live(LINKS.eipPr) && (

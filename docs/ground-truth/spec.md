@@ -30,12 +30,14 @@ design; any remaining manual entry must be validated.
 
 ## 4. Attestations are EIP-712 bound and replay-proof (III)
 
-Buddy attestations are EIP-712 typed-data signatures bound to the logbook
-address and the dive number, with per-logbook nonces. The signature must be
-recoverable via `ecrecover` with low-s only (malleable high-s signatures are
-rejected). The attester identity is recovered from the signature, never from
-the relayer. `createLogbook`/`adoptLogbook` take no owner parameters, so
-relayed or front-run copies are harmless.
+Buddy attestations are EIP-712 typed-data signatures in the domain `DiveLog`,
+version `"2"`, bound to the logbook address, the dive number and the dive's
+stored `contentHash` (the SHA-256 of the exact attested UDDF bytes), with
+per-attester nonces. The signature must be recoverable via `ecrecover` with
+low-s only (malleable high-s signatures are rejected). The attester identity
+is recovered from the signature, never from the relayer.
+`createLogbook`/`adoptLogbook` take no owner parameters, so relayed or
+front-run copies are harmless.
 
 ## 5. Zero personal data on-chain (II)
 
@@ -52,10 +54,15 @@ chunk across transactions rather than raise the cap.
 
 ## 7. ERC-8260 conformance (IV)
 
-The dive-log interface is `IDiveLog` with ERC-165 id `0x321ef561`.
-`adoptLogbook` verifies ERC-165 support and `owner() == msg.sender` before
-registering an external logbook. A spoofed adoption can only pollute the
-spoofer's own registry slot; that trade-off is accepted and tested.
+The dive-log interface is `IDiveLog` with ERC-165 id `0x4d89a8f9` (the
+redesigned ERC-8260 v2 thin-header standard: uint32 YYYYMMDD dates, tenths
+depths, basis-point gas, bytes16 table schedule, bytes4 coarse geohash,
+required SHA-256 `contentHash` over the exact UDDF bytes). The on-chain
+record is a self-sufficient header; the rich profile stays off-chain,
+hash-anchored (DIV-D-1). `adoptLogbook` verifies ERC-165 support and
+`owner() == msg.sender` before registering an external logbook. A spoofed
+adoption can only pollute the spoofer's own registry slot; that trade-off is
+accepted and tested.
 
 ## 8. Trust-model honesty in client copy (II)
 

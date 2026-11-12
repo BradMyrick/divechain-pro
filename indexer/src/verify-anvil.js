@@ -1,10 +1,12 @@
 // Self-verifying indexer test: boots anvil, deploys the factory, exercises the
-// full flow (create ×2, log dives, EIP-712 attest, release), runs the indexer
-// pass, and asserts the indexed output. Exit code 0 = indexer is correct.
+// full v2 flow (create ×2, log a thin-header dive with a UDDF content hash,
+// EIP-712 attest over that hash, release), runs the indexer pass, and asserts
+// the indexed output. Exit code 0 = indexer is correct.
 import { spawn } from "node:child_process";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { foundry } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -18,6 +20,12 @@ const factoryArtifact = JSON.parse(
 const logArtifact = JSON.parse(
   readFileSync(join(here, "../../src/contracts/SovereignDiveLog.json"), "utf8"),
 );
+
+// The ERC-8260 reference UDDF fixture: the content hash commits to these bytes.
+const UDDF_FIXTURE = readFileSync(
+  join(here, "../../deployment/test/fixtures/minimal.uddf"),
+);
+const contentHash = "0x" + createHash("sha256").update(UDDF_FIXTURE).digest("hex");
 
 const URL = "http://127.0.0.1:8545";
 const ALICE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // anvil #0
@@ -64,41 +72,47 @@ async function main() {
       address: factory, abi: factoryArtifact.abi, functionName: "logbookOf", args: [alice.address],
     });
 
-    const dive = (date) => ({
-      diveDate: date,
-      units: 1,
-      data: { leaveSurfaceTime: 0, leaveBottomTime: 0, reachSurfaceTime: 0, bottomTimeMinutes: 40,
-        maxDepth: 18, averageDepth: 12, mode: 1, purpose: 11, suit: 0 },
-      env: { airTemp: 0, waterTemp: 0, currentKnots: 0, bottomType: 0,
-        coords: { latitude: 0, longitude: 0 }, location: "anvil", weatherConditions: "" },
-      decomp: { decompType: 0, totalDecompTimeMinutes: 0, maxDepthAttained: 18,
-        tableSchedule: "0x" + "0".repeat(64), repetitiveGroup: "0x00",
-        surfaceIntervalMinutes: 0, newRepetitiveGroup: "0x00" },
-      gas: { gasType: 0, o2Percent: 2090, hePercent: 0, n2Percent: 7910,
-        cylinderPressureIn: 0, cylinderPressureOut: 0, gasConsumed: 0, bailoutPressure: 0 },
-      remarks: "verify",
-    });
+    // v2 thin header: YYYYMMDD date, tenths of MSW, basis-point gas, UDDF hash.
+    const dive = {
+      diveDate: 20260514,
+      startTime: BigInt(Math.floor(Date.UTC(2026, 4, 14, 12) / 1000)), // noon UTC of the dive day
+      maxDepth: 182, // 18.2 m in tenths (matches the fixture's greatest depth)
+      durationSeconds: 1860, // surface-to-surface (fixture diveduration)
+      bottomTimeSeconds: 1500, // leave surface to beginning of ascent
+      mode: 0, // OCRecreational
+      units: 1, // Metric
+      o2Bps: 2100,
+      heBps: 0,
+      tableSchedule: "0x" + "0".repeat(32),
+      surfaceIntervalSeconds: 0,
+      repetitiveGroup: "0x00",
+      repetitiveGroupAfterSI: "0x00",
+      coarseGeohash: "0x00000000",
+      contentHash,
+      profileURI: "",
+    };
 
-    console.log("[verify] logging dives…");
+    console.log("[verify] logging a v2 thin-header dive…");
     const h3 = await a.writeContract({
-      address: aliceLogbook, abi: logArtifact.abi, functionName: "logDive", args: [dive(1_700_000_000)],
+      address: aliceLogbook, abi: logArtifact.abi, functionName: "logDive", args: [dive],
     });
     await wait(h3);
 
-    console.log("[verify] bob signs + alice relays an attestation…");
+    console.log("[verify] bob signs + alice relays an attestation bound to the content hash…");
     const signature = await b.signTypedData({
-      domain: { name: "DiveLog", version: "1", chainId: 31337, verifyingContract: aliceLogbook },
+      domain: { name: "DiveLog", version: "2", chainId: 31337, verifyingContract: aliceLogbook },
       types: { Attestation: [
         { name: "diveId", type: "uint256" },
+        { name: "contentHash", type: "bytes32" },
         { name: "verifyingContract", type: "address" },
         { name: "nonce", type: "uint256" },
       ] },
       primaryType: "Attestation",
-      message: { diveId: 1n, verifyingContract: aliceLogbook, nonce: 0n },
+      message: { diveId: 1n, contentHash, verifyingContract: aliceLogbook, nonce: 0n },
     });
     const h4 = await a.writeContract({
       address: aliceLogbook, abi: logArtifact.abi, functionName: "attestDive",
-      args: [1n, 0n, signature],
+      args: [1n, contentHash, 0n, signature],
     });
     await wait(h4);
 

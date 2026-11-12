@@ -25,7 +25,9 @@ deployment/
 │   └── EmitEip712Fixture.s.sol      # emits the TS<->Solidity EIP-712 test fixture
 ├── test/
 │   ├── DiveLogFactory.t.sol         # unit + invariant tests for the registry
-│   └── SovereignDiveLog.t.sol       # smoke tests: logging, voiding, attestations, guards
+│   └── SovereignDiveLog.t.sol       # the full 48-test ERC reference suite
+                                       # (headers, guards, batches, void/supersede,
+                                       #  attestations, EIP-712 digests, gas report)
 ├── export-artifacts.sh              # regenerates ../src/contracts/*.json for the dApp
 ├── export-fixture.sh                # regenerates ../src/fixtures/eip712-fixture.json
 ├── flattened/DiveLogFactory.flattened.sol  # single-file source for web deployers (gitignored)
@@ -62,15 +64,21 @@ registered.
 
 ## Reference-asset provenance
 
-`SovereignDiveLog.sol` and `interfaces/` are verbatim copies of the redesigned
-ERC-8260 reference assets from ethereum/ERCs#1735 (commit `0122b754`): the thin
-packed header (bottom time + total duration, table/schedule, both repetitive
-groups + surface interval, Saturation mode), required SHA-256 `contentHash`,
-optional EIP-712 attestations bound to that hash (domain `DiveLog`,
-version `"2"`), batch cap 100, void/supersede, and nonce cancellation. The
-three former local hardening deltas (EIP-2 low-`s` rejection, the
-`InvalidBatchSize` bound, date validation) are now part of the standard
-sources, so there are no local deltas anymore.
+`interfaces/` is byte-identical to the redesigned ERC-8260 reference assets
+from ethereum/ERCs#1735 (commit `0122b754`): the thin packed header (bottom
+time + total duration, table/schedule, both repetitive groups + surface
+interval, Saturation mode), required SHA-256 `contentHash`, optional EIP-712
+attestations bound to that hash (domain `DiveLog`, version `"2"`), batch cap
+100, void/supersede, and nonce cancellation. The three former local hardening
+deltas (EIP-2 low-`s` rejection, the `InvalidBatchSize` bound, date
+validation) are part of the standard sources.
+
+`SovereignDiveLog.sol` is the same upstream asset with exactly one local
+character change (an em-dash replaced by a comma in the `_HALF_N` comment, to
+keep the source ASCII); functionally identical, but not byte-identical. The
+test file differs only in import paths for this project's `src/` layout. The
+toolchain is pinned locally (solc 0.8.34 / cancun / optimizer 200, below);
+upstream compiles the same `pragma ^0.8.20` sources on its own pins.
 
 The `interfaces/` directory stays byte-identical to the ERC assets (excluded
 from `forge fmt` via `foundry.toml`).

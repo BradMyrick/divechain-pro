@@ -1,4 +1,5 @@
 import type { NormalizedDive } from "./diverStats";
+import { ymdToString } from "./contracts";
 
 export interface DiveGroup {
   key: string;
@@ -6,11 +7,14 @@ export interface DiveGroup {
   dives: NormalizedDive[];
 }
 
+/** Group by UTC calendar month. v2 header dates are uint32 YYYYMMDD, so the
+ *  bucket key is just the leading `YYYYMM` digits. */
 export function groupByMonth(dives: NormalizedDive[]): DiveGroup[] {
   const map = new Map<string, NormalizedDive[]>();
   for (const dive of [...dives].reverse()) {
-    const date = new Date(Number(dive.diveDate) * 1000);
-    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth()).padStart(2, "0")}`;
+    const day = ymdToString(Number(dive.diveDate));
+    if (!day) continue;
+    const key = day.slice(0, 7); // YYYY-MM
     const bucket = map.get(key);
     if (bucket) bucket.push(dive);
     else map.set(key, [dive]);
@@ -21,7 +25,7 @@ export function groupByMonth(dives: NormalizedDive[]): DiveGroup[] {
       key,
       label: new Date(
         Number(key.slice(0, 4)),
-        Number(key.slice(5, 7)),
+        Number(key.slice(5, 7)) - 1,
         15,
       ).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
       dives: group,

@@ -118,7 +118,7 @@ export default function Profile() {
             {isCompliant !== undefined && (
               <div className={`glass-card-inner p-3 flex items-center gap-2 ${isCompliant ? "border-kelp/20" : "border-danger/20"}`}>
                 {isCompliant ? (
-                  <><ShieldCheck className="w-4 h-4 text-kelp" /><p className="text-xs text-kelp">ERC-8260 compliant (IDiveLog 0x321ef561)</p></>
+                  <><ShieldCheck className="w-4 h-4 text-kelp" /><p className="text-xs text-kelp">ERC-8260 compliant (IDiveLog 0x4d89a8f9)</p></>
                 ) : (
                   <><AlertTriangle className="w-4 h-4 text-danger" /><p className="text-xs text-danger">Contract does not implement IDiveLog — it may be a legacy/non-standard logbook.</p></>
                 )}

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { DiveLog } from "../lib/types";
-import { depthUnit, UnitSystem, DecompressionType } from "../lib/contracts";
+import type { NormalizedDive } from "../lib/diverStats";
+import { depthUnit, tenthsToDepth, UnitSystem, DecompressionType } from "../lib/contracts";
 
 interface SketchPoint {
   t: number; // minutes from start
@@ -8,14 +8,15 @@ interface SketchPoint {
 }
 
 interface DiveProfileSketchProps {
-  dive: DiveLog;
+  dive: NormalizedDive;
   height?: number;
 }
 
 /**
- * Time-depth profile sketch, drawn from the log entry's times, depths and
- * decompression data, clearly labeled ESTIMATED. When real telemetry (UDDF /
- * dive computer samples) lands, this component will render those instead.
+ * Time-depth profile sketch, drawn from the v2 header (times, depths) plus the
+ * local profile draft when present, clearly labeled ESTIMATED. When real
+ * telemetry (UDDF dive-computer samples) lands, this component renders those
+ * instead.
  *
  * Y axis is inverted (depth grows downward), X is run time in minutes.
  */
@@ -28,26 +29,24 @@ export default function DiveProfileSketch({ dive, height = 220 }: DiveProfileSke
   const PAD_B = 26;
 
   const { points, decoStops, totalTime, maxDepth, isEstimated } = useMemo(() => {
-    const bt = Number(dive.data.bottomTimeMinutes) || 1;
-    const deco = Number(dive.decomp.totalDecompTimeMinutes) || 0;
-    const decompType = Number(dive.decomp.decompType);
-    const max = Number(dive.data.maxDepth) || 1;
-    const avg = Number(dive.data.averageDepth) || Math.round(max * 0.7);
+    const draft = dive.draft;
+    const durationSec = Number(dive.durationSeconds) || 1;
+    const btSec = Number(dive.bottomTimeSeconds) > 0 ? Number(dive.bottomTimeSeconds) : durationSec;
+    const bt = Math.max(1, btSec / 60);
+    const deco =
+      draft && Number(draft.decomp.totalDecompTimeMinutes) > 0
+        ? Number(draft.decomp.totalDecompTimeMinutes)
+        : Math.max(0, (durationSec - btSec) / 60);
+    const decompType = draft ? Number(draft.decomp.decompType) : DecompressionType.NoneDecomp;
+    const max = tenthsToDepth(Number(dive.maxDepth)) || 1;
+    const avg = draft && Number(draft.data.averageDepth) > 0 ? Number(draft.data.averageDepth) : Math.round(max * 0.7);
 
-    const leaveS = Number(dive.data.leaveSurfaceTime);
-    const leaveB = Number(dive.data.leaveBottomTime);
-    const reachS = Number(dive.data.reachSurfaceTime);
-    const hasTimes = leaveS > 0 && leaveB > leaveS;
+    // Total from the header's surface-to-surface duration beats synthesized
+    // figures; deco/ascent appended when the header only knows bottom time.
+    const total = Math.max(durationSec / 60, bt + deco + 1.5);
 
-    // Real timestamps beat synthesized ones; deco/ascent appended.
-    const start = hasTimes ? leaveS : 0;
-    const bottomEnd = hasTimes ? Math.max(leaveB, start + bt * 60) : bt * 60;
-    const surf = reachS > bottomEnd ? reachS : bottomEnd + (deco + 2) * 60;
-
-    const toMin = (sec: number) => (sec - start) / 60;
     const descendMin = Math.min(3, bt * 0.12);
-    const btEnd = toMin(bottomEnd);
-    const total = Math.max(toMin(surf), btEnd + deco + 1.5);
+    const btEnd = Math.min(bt, total - deco - 0.75);
 
     const pts: SketchPoint[] = [{ t: 0, d: 0 }];
     pts.push({ t: descendMin, d: max });
@@ -161,7 +160,7 @@ export default function DiveProfileSketch({ dive, height = 220 }: DiveProfileSke
       </svg>
       {isEstimated && (
         <p className="text-[10px] text-text-tertiary text-center mt-1">
-          Estimated from log entry · actual profile curve arrives with dive-computer import
+          Estimated from the on-chain header · actual profile curve arrives with dive-computer import
         </p>
       )}
     </div>

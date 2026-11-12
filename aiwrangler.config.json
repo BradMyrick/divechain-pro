@@ -41,7 +41,7 @@
   "ledger": { "path": ".aiwrangler/ledger.jsonl" },
   "webui": { "port": 4478, "bind": "127.0.0.1" },
   "repos": {
-    "super": "~/Repos/Divechain",
+    "super": "~/Repos/Dive/Divechain",
     "members": [],
     "reviewed": []
   }

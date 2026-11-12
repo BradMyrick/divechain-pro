@@ -352,8 +352,8 @@ export default function Home() {
             <ul className="space-y-2">
               {[
                 "Wallet key = sole write authority",
-                "ERC-165 interface detection (0x321ef561)",
-                "Detailed schema covering gas, decompression, conditions and remarks",
+                "ERC-165 interface detection (0x4d89a8f9)",
+                "Thin self-sufficient header, SHA-256-bound to the full UDDF profile",
                 "Dual unit system: Imperial & Metric",
                 "Batch logging for multi-dive days",
                 "Void mechanism preserves audit trail",
@@ -371,7 +371,7 @@ export default function Home() {
 
           <div className="animate-slide-up animate-delay-1">
             <p className="section-title"><ShieldCheck className="w-4 h-4" /> The proof layer</p>
-            <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">Buddy sign-offs that can't be faked.</h3>
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">Buddy sign-offs anyone can verify.</h3>
             <p className="text-sm text-text-secondary leading-relaxed mb-4">
               "Pencil-whipping" fake dive entries is endemic in the industry. ERC-8260's EIP-712 typed-data
               attestations make every buddy sign-off cryptographically provable, replay-protected, and permanently

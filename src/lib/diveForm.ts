@@ -1,26 +1,34 @@
 // Pure state + conversions for the shared dive-entry form
 // (src/components/DiveForm.tsx). Kept out of the component file so both
-// /log-dive and the batch import editor encode dives identically — and so
+// /log-dive and the batch import editor encode dives identically - and so
 // the conversions are unit-testable.
 //
-// Encoding rules (one-way consistency with every dive already on-chain):
-//   * date-only fields (diveDate) are stored at NOON UTC so every timezone
-//     renders the same calendar day
-//   * in/out times are optional datetime-local values, stored as unix seconds
-//   * n2 % is derived (100 - O2 - He); gas consumed is derived (in - out)
+// v2 encoding rules (one-way consistency with every dive already on-chain):
+//   * the on-chain record is a thin header: dates are uint32 YYYYMMDD, depth
+//     is tenths of FSW/MSW per the units system, gas is basis points, the
+//     table schedule is bytes16, the coarse location is a bytes4 geohash;
+//   * the rich record lives in the deterministic UDDF profile whose SHA-256
+//     becomes the required `contentHash` (see src/lib/uddf.ts);
+//   * `startTime` defaults to noon UTC of the dive day when no clock time is
+//     recorded, so the header's date check always holds;
+//   * total duration is surface-to-surface: from the wall clock when present,
+//     otherwise bottom time plus deco.
 
 import {
   UnitSystem,
   DiveMode,
-  DivePurpose,
-  SuitType,
-  BottomType,
-  BreathingGas,
-  DecompressionType,
+  charToBytes1,
+  depthToTenths,
+  percentToBps,
+  parseTableSchedule,
+  strToBytes16,
+  stringToYmd,
+  ymdOfUnix,
 } from "./contracts";
-import type { DiveInput } from "./types";
-import { ZERO_BYTES32, ZERO_BYTES1 } from "./types";
-import { strToBytes32, bytes32ToStr } from "./batchImport";
+import { coarseGeohashBytes } from "./geohash";
+import { uddfFromDraft, sha256Hex, draftTiming } from "./uddf";
+import type { DiveDraft, DiveInput } from "./types";
+import { ZERO_BYTES16, ZERO_BYTES4 } from "./types";
 
 export interface DiveFormState {
   diveDate: string; // YYYY-MM-DD (local calendar day the diver means)
@@ -32,22 +40,22 @@ export interface DiveFormState {
   averageDepth: number;
   bottomTimeMinutes: number;
   mode: DiveMode;
-  purpose: DivePurpose;
-  suit: SuitType;
+  purpose: number;
+  suit: number;
 
   location: string;
-  lat: string; // microdegrees, string so partial typing is legal
+  lat: string; // degrees, string so partial typing is legal
   lon: string;
   waterTemp: number;
   airTemp: number;
   currentKnots: number;
-  bottomType: BottomType;
+  bottomType: number;
   weatherConditions: string;
 
-  decompType: DecompressionType;
+  decompType: number;
   totalDecompTime: number;
-  tableSchedule: string; // e.g. "60/120"; empty -> zero bytes32
-  gasType: BreathingGas;
+  tableSchedule: string; // "<TOKEN>[ <schedule>]" e.g. "USN 60/40"; empty -> bytes16(0)
+  gasType: number;
   o2Percent: number;
   hePercent: number;
   cylIn: number;
@@ -71,21 +79,21 @@ export function emptyDiveFormState(): DiveFormState {
     maxDepth: 30,
     averageDepth: 15,
     bottomTimeMinutes: 45,
-    mode: DiveMode.SCUBA,
-    purpose: DivePurpose.Recreational,
-    suit: SuitType.Wet,
+    mode: DiveMode.OCRecreational,
+    purpose: 11, // Recreational (off-chain vocabulary)
+    suit: 0, // Wet
     location: "",
     lat: "",
     lon: "",
     waterTemp: 20,
     airTemp: 25,
     currentKnots: 0,
-    bottomType: BottomType.Sand,
+    bottomType: 5, // Other
     weatherConditions: "",
-    decompType: DecompressionType.NoneDecomp,
+    decompType: 0,
     totalDecompTime: 0,
     tableSchedule: "",
-    gasType: BreathingGas.Air,
+    gasType: 0,
     o2Percent: 21,
     hePercent: 0,
     cylIn: 0,
@@ -104,13 +112,11 @@ export function epochToLocalInput(unix: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** The on-chain payload. Identical encoding to the /log-dive page pre-refactor:
- *  date-only fields at noon UTC, n2 derived, gas consumed derived. */
-export function diveFormToInput(s: DiveFormState): DiveInput {
-  // Date-only field: stored as noon UTC so every timezone renders the same calendar day
-  const diveDateUnix = Math.floor(Date.parse(`${s.diveDate}T12:00:00Z`) / 1000);
+/** The rich draft: everything the form collects. Never goes on-chain; it is
+ *  serialized to UDDF and stored/exported instead. */
+export function diveFormToDraft(s: DiveFormState): DiveDraft {
   return {
-    diveDate: diveDateUnix,
+    diveDate: s.diveDate,
     units: s.units,
     data: {
       leaveSurfaceTime: toUnix(s.leaveSurface),
@@ -136,10 +142,10 @@ export function diveFormToInput(s: DiveFormState): DiveInput {
       decompType: s.decompType,
       totalDecompTimeMinutes: s.totalDecompTime,
       maxDepthAttained: s.maxDepth,
-      tableSchedule: s.tableSchedule.trim() ? strToBytes32(s.tableSchedule.trim()) : ZERO_BYTES32,
-      repetitiveGroup: ZERO_BYTES1,
+      tableSchedule: s.tableSchedule.trim(),
+      repetitiveGroup: "",
       surfaceIntervalMinutes: 0,
-      newRepetitiveGroup: ZERO_BYTES1,
+      newRepetitiveGroup: "",
     },
     gas: {
       gasType: s.gasType,
@@ -155,44 +161,94 @@ export function diveFormToInput(s: DiveFormState): DiveInput {
   };
 }
 
-/** Seed form state from an on-chain payload (import editor). Timestamps keep
- *  their instants; the dive date reads back as its UTC calendar day. */
-export function diveInputToForm(input: DiveInput): DiveFormState {
+/** Seed form state from a draft (import editor). Timestamps keep their
+ *  instants; the dive date reads back as its UTC calendar day. */
+export function draftToDiveForm(d: DiveDraft): DiveFormState {
   const base = emptyDiveFormState();
-  const day = input.diveDate
-    ? new Date(input.diveDate * 1000).toISOString().slice(0, 10)
-    : todayDateStr();
   return {
     ...base,
-    diveDate: day,
-    units: Number(input.units) as UnitSystem,
-    leaveSurface: epochToLocalInput(input.data.leaveSurfaceTime),
-    leaveBottom: epochToLocalInput(input.data.leaveBottomTime),
-    reachSurface: epochToLocalInput(input.data.reachSurfaceTime),
-    maxDepth: Number(input.data.maxDepth) || 0,
-    averageDepth: Number(input.data.averageDepth) || 0,
-    bottomTimeMinutes: Number(input.data.bottomTimeMinutes) || 0,
-    mode: Number(input.data.mode) as DiveMode,
-    purpose: Number(input.data.purpose) as DivePurpose,
-    suit: Number(input.data.suit) as SuitType,
-    location: String(input.env.location ?? ""),
-    lat: input.env.coords?.latitude ? String(input.env.coords.latitude) : "",
-    lon: input.env.coords?.longitude ? String(input.env.coords.longitude) : "",
-    waterTemp: Number(input.env.waterTemp) || 0,
-    airTemp: Number(input.env.airTemp) || 0,
-    currentKnots: Number(input.env.currentKnots) || 0,
-    bottomType: Number(input.env.bottomType) as BottomType,
-    weatherConditions: String(input.env.weatherConditions ?? ""),
-    decompType: Number(input.decomp.decompType) as DecompressionType,
-    totalDecompTime: Number(input.decomp.totalDecompTimeMinutes) || 0,
-    tableSchedule: bytes32ToStr(input.decomp.tableSchedule),
-    gasType: Number(input.gas.gasType) as BreathingGas,
-    o2Percent: Number(input.gas.o2Percent) || 0,
-    hePercent: Number(input.gas.hePercent) || 0,
-    cylIn: Number(input.gas.cylinderPressureIn) || 0,
-    cylOut: Number(input.gas.cylinderPressureOut) || 0,
-    remarks: String(input.remarks ?? ""),
+    diveDate: d.diveDate || todayDateStr(),
+    units: Number(d.units) as UnitSystem,
+    leaveSurface: epochToLocalInput(Number(d.data.leaveSurfaceTime)),
+    leaveBottom: epochToLocalInput(Number(d.data.leaveBottomTime)),
+    reachSurface: epochToLocalInput(Number(d.data.reachSurfaceTime)),
+    maxDepth: Number(d.data.maxDepth) || 0,
+    averageDepth: Number(d.data.averageDepth) || 0,
+    bottomTimeMinutes: Number(d.data.bottomTimeMinutes) || 0,
+    mode: Number(d.data.mode) as DiveMode,
+    purpose: Number(d.data.purpose) || 0,
+    suit: Number(d.data.suit) || 0,
+    location: String(d.env.location ?? ""),
+    lat: d.env.coords?.latitude ? String(d.env.coords.latitude) : "",
+    lon: d.env.coords?.longitude ? String(d.env.coords.longitude) : "",
+    waterTemp: Number(d.env.waterTemp) || 0,
+    airTemp: Number(d.env.airTemp) || 0,
+    currentKnots: Number(d.env.currentKnots) || 0,
+    bottomType: Number(d.env.bottomType) || 0,
+    weatherConditions: String(d.env.weatherConditions ?? ""),
+    decompType: Number(d.decomp.decompType) || 0,
+    totalDecompTime: Number(d.decomp.totalDecompTimeMinutes) || 0,
+    tableSchedule: String(d.decomp.tableSchedule ?? ""),
+    gasType: Number(d.gas.gasType) || 0,
+    o2Percent: Number(d.gas.o2Percent) || 0,
+    hePercent: Number(d.gas.hePercent) || 0,
+    cylIn: Number(d.gas.cylinderPressureIn) || 0,
+    cylOut: Number(d.gas.cylinderPressureOut) || 0,
+    remarks: String(d.remarks ?? ""),
   };
+}
+
+/** Encode the v2 on-chain header from a draft (no hashing here - that needs
+ *  the UDDF bytes, see `prepareDiveInput`). */
+export function draftToHeader(d: DiveDraft): Omit<DiveInput, "contentHash"> & { contentHash: `0x${string}` } {
+  const { startTime, durationSeconds, bottomTimeSeconds } = draftTiming(d);
+  // diveDate follows the UTC day of startTime when a clock exists, else the
+  // date the diver picked (the contract requires they match).
+  const ymd = startTime > 0 ? ymdOfUnix(startTime) : stringToYmd(d.diveDate);
+  const schedule = parseTableSchedule(String(d.decomp.tableSchedule ?? ""));
+  const lat = Number(d.env.coords?.latitude) || 0;
+  const lon = Number(d.env.coords?.longitude) || 0;
+  const hasGas = (Number(d.gas.o2Percent) || 0) > 0 || (Number(d.gas.hePercent) || 0) > 0;
+  const rg = String(d.decomp.repetitiveGroup ?? "").trim();
+  const rgAfter = String(d.decomp.newRepetitiveGroup ?? "").trim();
+  const siSec = Math.round(Number(d.decomp.surfaceIntervalMinutes) * 60);
+
+  return {
+    diveDate: ymd,
+    startTime,
+    maxDepth: depthToTenths(Number(d.data.maxDepth) || 0),
+    durationSeconds,
+    bottomTimeSeconds,
+    mode: Number(d.data.mode),
+    units: Number(d.units),
+    o2Bps: hasGas ? percentToBps(Number(d.gas.o2Percent) || 0) : 0,
+    heBps: hasGas ? percentToBps(Number(d.gas.hePercent) || 0) : 0,
+    tableSchedule: schedule ? strToBytes16(schedule.token + (schedule.schedule ? " " + schedule.schedule : "")) : ZERO_BYTES16,
+    surfaceIntervalSeconds: siSec,
+    repetitiveGroup: charToBytes1(rg),
+    repetitiveGroupAfterSI: charToBytes1(rgAfter),
+    coarseGeohash: lat !== 0 || lon !== 0 ? coarseGeohashBytes(lat, lon) : ZERO_BYTES4,
+    // placeholder; prepareDiveInput fills it with the UDDF SHA-256
+    contentHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+    profileURI: "",
+  };
+}
+
+export interface PreparedDive {
+  input: DiveInput;
+  /** Exact UDDF bytes the contentHash commits to. */
+  uddf: string;
+  draft: DiveDraft;
+}
+
+/** Full v2 payload: deterministic UDDF from the draft, SHA-256 contentHash,
+ *  and the packed header. Pure apart from the digest computation; the caller
+ *  owns persistence (profileVault.saveProfile) and any publishing. */
+export async function prepareDiveInput(draft: DiveDraft): Promise<PreparedDive> {
+  const uddf = uddfFromDraft(draft);
+  const contentHash = await sha256Hex(uddf);
+  const header = draftToHeader(draft);
+  return { input: { ...header, contentHash }, uddf, draft };
 }
 
 /** The leave-surface clock must fall on the dive's calendar day. */
