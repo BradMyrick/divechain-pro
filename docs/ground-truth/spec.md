@@ -33,7 +33,11 @@ design; any remaining manual entry must be validated.
 Buddy attestations are EIP-712 typed-data signatures in the domain `DiveLog`,
 version `"2"`, bound to the logbook address, the dive number and the dive's
 stored `contentHash` (the SHA-256 of the exact attested UDDF bytes), with
-per-attester nonces. The signature must be recoverable via `ecrecover` with
+per-attester nonces. An attestation vouches for the dive record as stored
+under that id: the header and the UDDF its `contentHash` commits to.
+Attesters must review both before signing, and attestation clients should
+surface the stored header fields next to the hash so that review is
+possible. The signature must be recoverable via `ecrecover` with
 low-s only (malleable high-s signatures are rejected). The attester identity
 is recovered from the signature, never from the relayer.
 `createLogbook`/`adoptLogbook` take no owner parameters, so relayed or
