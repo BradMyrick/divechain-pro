@@ -16,16 +16,18 @@ deployment/
 │   ├── DiveLogFactory.sol           # wallet -> logbook registry (create/adopt/release)
 │   ├── SovereignDiveLog.sol         # ERC-8260 reference implementation (owner-only logbook)
 │   └── interfaces/                  # verbatim ERC-8260 reference interfaces
-│       ├── IDiveLogTypes.sol        # enums + structs
-│       ├── IDiveLog.sol             # interface (ERC-165 id 0x321ef561)
-│       ├── IDiveLogTypedData.sol    # EIP-712 typed-data hashing library
+│       ├── IDiveLogTypes.sol        # enums + structs (incl. Saturation mode)
+│       ├── IDiveLog.sol             # interface (ERC-165 id 0x4d89a8f9)
+│       ├── IDiveLogTypedData.sol    # EIP-712 typed-data hashing library (domain version "2")
 │       └── IERC165.sol
 ├── script/
 │   ├── Deploy.s.sol                 # deploys the DiveLogFactory
 │   └── EmitEip712Fixture.s.sol      # emits the TS<->Solidity EIP-712 test fixture
 ├── test/
 │   ├── DiveLogFactory.t.sol         # unit + invariant tests for the registry
-│   └── SovereignDiveLog.t.sol       # smoke tests: logging, voiding, attestations, guards
+│   └── SovereignDiveLog.t.sol       # the full 48-test ERC reference suite
+                                       # (headers, guards, batches, void/supersede,
+                                       #  attestations, EIP-712 digests, gas report)
 ├── export-artifacts.sh              # regenerates ../src/contracts/*.json for the dApp
 ├── export-fixture.sh                # regenerates ../src/fixtures/eip712-fixture.json
 ├── flattened/DiveLogFactory.flattened.sol  # single-file source for web deployers (gitignored)
@@ -60,21 +62,26 @@ sponsored-deployment (meta-transaction) extension: a signed
 `createLogbookFor(owner)` request can never be replayed once the wallet is
 registered.
 
-## Local-reference hardening (pending upstream)
+## Reference-asset provenance
 
-`SovereignDiveLog.sol` carries three small hardening changes on top of the
-current PR #1735 sources (also applied to the ERC fork for merge):
+`interfaces/` is byte-identical to the redesigned ERC-8260 reference assets
+from ethereum/ERCs#1735 (commit `0122b754`): the thin packed header (bottom
+time + total duration, table/schedule, both repetitive groups + surface
+interval, Saturation mode), required SHA-256 `contentHash`, optional EIP-712
+attestations bound to that hash (domain `DiveLog`, version `"2"`), batch cap
+100, void/supersede, and nonce cancellation. The three former local hardening
+deltas (EIP-2 low-`s` rejection, the `InvalidBatchSize` bound, date
+validation) are part of the standard sources.
 
-1. **EIP-2 canonical signatures** - `_recoverSigner` rejects `s` values above
-   half the secp256k1 group order (malleability hygiene).
-2. **Batch bound** - `batchLogDives` reverts with `InvalidBatchSize` on empty
-   batches or batches above `MAX_BATCH_SIZE` (100), preventing block-gas
-   self-DoS.
-3. **Date sanity** - `logDive`/`batchLogDives` revert with `InvalidDate` when
-   `diveDate == 0`.
+`SovereignDiveLog.sol` is the same upstream asset with exactly one local
+character change (an em-dash replaced by a comma in the `_HALF_N` comment, to
+keep the source ASCII); functionally identical, but not byte-identical. The
+test file differs only in import paths for this project's `src/` layout. The
+toolchain is pinned locally (solc 0.8.38 / cancun / optimizer 200, below);
+upstream compiles the same `pragma ^0.8.20` sources on its own pins.
 
-The `interfaces/` directory is byte-identical to the ERC assets (excluded from
-`forge fmt` via `foundry.toml`).
+The `interfaces/` directory stays byte-identical to the ERC assets (excluded
+from `forge fmt` via `foundry.toml`).
 
 ## Setup
 
@@ -88,10 +95,15 @@ forge build
 forge test
 ```
 
-> Compiler: solc **0.8.34**, `evm_version = cancun`, optimizer 200 runs —
-> verified to reproduce the deployed factory bytecode byte-for-byte. Avalanche
-> has supported Cancun since the Durango upgrade (Feb 2024). Sources remain
-> `pragma ^0.8.20`, so upstream (PR #1735) is unaffected by this toolchain pin.
+> Compiler: solc **0.8.38**, `evm_version = cancun`, optimizer 200 runs;
+> pinned for the v2 deployments. Measured gas is identical to the 0.8.34 pin
+> the v1 factories were byte-verified at (logDive median 154,165;
+> createLogbook median 2,341,779; SovereignDiveLog runtime code unchanged
+> apart from the metadata tail), and 0.8.38 is the bug-fix-only release with
+> an empty known-bug list. Avalanche has supported Cancun since the Durango
+> upgrade (Feb 2024); the Helicon upgrade (2026) changed execution and gas
+> pricing, not the EVM fork level. Sources remain `pragma ^0.8.20`, so
+> upstream (PR #1735) is unaffected by this toolchain pin.
 
 ## Deploy the factory
 
@@ -139,13 +151,22 @@ from the contract itself:
 
 | Network | Chain ID | Contract | Address |
 | --- | --- | --- | --- |
-| Fuji | 43113 | DiveLogFactory | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
-| C-Chain | 43114 | DiveLogFactory | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
+| Fuji | 43113 | DiveLogFactory **v2** | `0x2ec5e579E0B3e31C4c3e6ABE1F7c0eF7ACa4E740` |
+| C-Chain | 43114 | DiveLogFactory **v2** | `0x36eB0768Ba245A4D002F35E3a17D3210c9C6BB83` |
+| Fuji | 43113 | DiveLogFactory (v1, legacy) | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
+| C-Chain | 43114 | DiveLogFactory (v1, legacy) | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
 | Fuji | 43113 | SovereignDiveLog (legacy, pre-factory) | `0x5adf6d5150a62d67fa1a18ac7dde8fcbad392565` |
 
-> Both factories were deployed via Avalanche Builders Hub from
-> `flattened/DiveLogFactory.flattened.sol` and verified byte-identical to this
-> repo's compilation (solc 0.8.34 / cancun / optimizer 200) by direct
-> `eth_getCode` comparison. The legacy Fuji `SovereignDiveLog` (and any logbook
-> deployed directly from the dApp before the factories) remains fully usable —
-> its owner registers it once via `adoptLogbook`.
+> The v2 factories were deployed 2026-11-13 from Remix with
+> `flattened/DiveLogFactory.flattened.sol` at solc 0.8.38 / cancun /
+> optimizer 200, and verified byte-identical to this repo's compilation by
+> direct `eth_getCode` comparison on both chains (only the source-metadata
+> hash differs, flattened vs multi-file layout). They mint ERC-8260 v2
+> thin-header logbooks and are what the dApp pins.
+>
+> The v1 factories were deployed via Avalanche Builders Hub at the v1-era pin
+> (solc 0.8.34 / cancun / optimizer 200) with the same verification; they mint
+> v1-interface logbooks only and remain live for their existing books. The
+> legacy Fuji `SovereignDiveLog` (and any logbook deployed directly from the
+> dApp before the factories) remains fully usable on the v1 factories; its
+> owner registers it once via `adoptLogbook`.

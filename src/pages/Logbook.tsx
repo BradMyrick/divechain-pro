@@ -4,7 +4,7 @@ import { Drawer } from "vaul";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import { useLogbookData } from "../hooks/useLogbook";
 import { computeDiverStats, formatMinutes, type NormalizedDive } from "../lib/diverStats";
-import { UnitSystem, depthUnit } from "../lib/contracts";
+import { UnitSystem, depthUnit, tenthsToDepth, ymdToString, bytes4ToGeohash } from "../lib/contracts";
 import { divesToBatchJson, downloadBatchJson } from "../lib/batchExport";
 import DiveDetail from "./DiveDetail";
 import { groupByMonth } from "../lib/groupDives";
@@ -162,6 +162,14 @@ function DiveListItem({
   const isVoided = !!dive.voidInfo?.isVoided;
   const attCount = dive.attestations.length;
   const dU = depthUnit(Number(dive.units) as UnitSystem);
+  const day = ymdToString(Number(dive.diveDate));
+  const hasDeco =
+    Number(dive.bottomTimeSeconds) > 0 && Number(dive.durationSeconds) > Number(dive.bottomTimeSeconds);
+  const btMin =
+    Number(dive.bottomTimeSeconds) > 0
+      ? Math.round(Number(dive.bottomTimeSeconds) / 60)
+      : Math.round(Number(dive.durationSeconds) / 60);
+  const location = dive.draft?.env.location;
 
   return (
     <button
@@ -178,7 +186,9 @@ function DiveListItem({
           </p>
           <p className="text-[11px] text-text-tertiary flex items-center gap-1 mt-0.5">
             <Clock className="w-3 h-3" />{" "}
-            {new Date(Number(dive.diveDate) * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {day
+              ? new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+              : "-"}
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -187,7 +197,7 @@ function DiveListItem({
               <ShieldCheck className="w-3 h-3" /> {attCount}
             </span>
           )}
-          {Number(dive.decomp.totalDecompTimeMinutes) > 0 && (
+          {hasDeco && (
             <span className="flex items-center gap-0.5 text-[10px] text-gold bg-gold/10 px-1.5 py-0.5 rounded-full border border-gold/20">
               <Activity className="w-3 h-3" />
             </span>
@@ -195,14 +205,16 @@ function DiveListItem({
         </div>
       </div>
       <div className="flex items-center gap-2 text-xs flex-wrap">
-        <FlagChip mode={Number(dive.data.mode)} purpose={Number(dive.data.purpose)} />
+        <FlagChip mode={Number(dive.mode)} purpose={dive.draft ? Number(dive.draft.data.purpose) : undefined} />
         <span className="text-white font-medium tabular-nums flex items-center gap-0.5">
-          <Waves className="w-3 h-3 text-text-tertiary" />{Number(dive.data.maxDepth)}{dU}
+          <Waves className="w-3 h-3 text-text-tertiary" />{tenthsToDepth(Number(dive.maxDepth))}{dU}
         </span>
-        <span className="text-text-tertiary tabular-nums">{Number(dive.data.bottomTimeMinutes)}min</span>
+        <span className="text-text-tertiary tabular-nums">{btMin}min</span>
       </div>
-      {Boolean(dive.env.location) && (
-        <p className="text-[11px] text-text-tertiary mt-1.5 truncate flex items-center gap-1"><MapPin className="w-3 h-3" /> {dive.env.location}</p>
+      {location ? (
+        <p className="text-[11px] text-text-tertiary mt-1.5 truncate flex items-center gap-1"><MapPin className="w-3 h-3" /> {location}</p>
+      ) : (
+        <p className="text-[11px] text-text-tertiary/70 mt-1.5 truncate flex items-center gap-1"><MapPin className="w-3 h-3" /> {bytes4ToGeohash(dive.coarseGeohash) || "Location in private profile"}</p>
       )}
       {isVoided && <span className="pill pill-danger text-[9px] py-0 mt-1.5">corrected</span>}
     </button>

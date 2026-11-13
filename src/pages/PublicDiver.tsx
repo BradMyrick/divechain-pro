@@ -14,7 +14,8 @@ import DiveProfileSketch from "../components/DiveProfileSketch";
 import QRCode from "../components/QRCode";
 import { DiverDownFlag, AlphaFlag, DivechainMark } from "../components/flags/Flags";
 import {
-  DIVE_MODE_LABELS, DIVE_PURPOSE_LABELS, BREATHING_GAS_LABELS, depthUnit, tempUnit, DiveMode, DivePurpose, BreathingGas, UnitSystem,
+  DIVE_MODE_LABELS, DIVE_PURPOSE_LABELS, depthUnit, tempUnit, DiveMode, DivePurpose, UnitSystem,
+  gasMixLabel, tenthsToDepth, ymdToString,
 } from "../lib/contracts";
 import {
   Anchor, Clock, Waves, ShieldCheck, Loader2, MapPin, ChevronDown, ChevronRight,
@@ -233,7 +234,7 @@ export default function PublicDiver({ demo = false }: PublicDiverProps) {
             <div>
               <p className="text-lg font-bold text-white font-display">{formatMinutes(stats.commercialBottomMinutes)}</p>
               <p className="text-[10px] uppercase tracking-wider text-text-tertiary">
-                Commercial · {stats.ssaDives} surface-supplied
+                Commercial · {stats.commercialDives} surface-supplied
               </p>
             </div>
           </div>
@@ -353,7 +354,13 @@ function DiveRow({ dive, demo, chainId }: { dive: NormalizedDive; demo: boolean;
   const [open, setOpen] = useState(false);
   const isVoided = !!dive.voidInfo?.isVoided;
   const dU = depthUnit(Number(dive.units) as UnitSystem);
-  const gasLabel = BREATHING_GAS_LABELS[Number(dive.gas.gasType) as BreathingGas] ?? "Air";
+  const gasLabel = gasMixLabel(Number(dive.o2Bps), Number(dive.heBps));
+  const day = ymdToString(Number(dive.diveDate));
+  const btMin =
+    Number(dive.bottomTimeSeconds) > 0
+      ? Math.round(Number(dive.bottomTimeSeconds) / 60)
+      : Math.round(Number(dive.durationSeconds) / 60);
+  const draft = dive.draft;
 
   return (
     <div className={`glass-card-inner overflow-hidden ${isVoided ? "opacity-60" : ""}`}>
@@ -365,7 +372,7 @@ function DiveRow({ dive, demo, chainId }: { dive: NormalizedDive; demo: boolean;
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-white">Dive #{dive.id.toString()}</span>
-            <FlagChip mode={Number(dive.data.mode)} purpose={Number(dive.data.purpose)} />
+            <FlagChip mode={Number(dive.mode)} purpose={draft ? Number(draft.data.purpose) : undefined} />
             {isVoided && <span className="pill pill-danger text-[9px] py-0">corrected</span>}
             {dive.attestations.length > 0 && (
               <span className="pill pill-kelp text-[9px] py-0">
@@ -374,18 +381,18 @@ function DiveRow({ dive, demo, chainId }: { dive: NormalizedDive; demo: boolean;
             )}
           </div>
           <p className="text-[11px] text-text-tertiary mt-0.5 flex items-center gap-2 flex-wrap">
-            <span>{new Date(Number(dive.diveDate) * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-            {Boolean(dive.env.location) && (
-              <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{dive.env.location}</span>
+            <span>{day ? new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-"}</span>
+            {draft?.env.location && (
+              <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{draft.env.location}</span>
             )}
           </p>
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-medium text-white tabular-nums">
-            {Number(dive.data.maxDepth)}{dU} · {Number(dive.data.bottomTimeMinutes)}m
+            {tenthsToDepth(Number(dive.maxDepth))}{dU} · {btMin}m
           </p>
           <p className="text-[10px] text-text-tertiary">
-            {DIVE_MODE_LABELS[Number(dive.data.mode) as DiveMode]} · {gasLabel}
+            {DIVE_MODE_LABELS[Number(dive.mode) as DiveMode]} · {gasLabel}
           </p>
         </div>
       </button>
@@ -395,19 +402,21 @@ function DiveRow({ dive, demo, chainId }: { dive: NormalizedDive; demo: boolean;
           <DiveProfileSketch dive={dive} height={180} />
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-            <Field label="Purpose" value={DIVE_PURPOSE_LABELS[Number(dive.data.purpose) as DivePurpose] ?? "-"} />
-            <Field label="Mode" value={DIVE_MODE_LABELS[Number(dive.data.mode) as DiveMode] ?? "-"} />
-            <Field label="Water temp" value={`${Number(dive.env.waterTemp)}${tempUnit(Number(dive.units))}`} />
+            {draft && <Field label="Purpose" value={DIVE_PURPOSE_LABELS[Number(draft.data.purpose) as DivePurpose] ?? "-"} />}
+            <Field label="Mode" value={DIVE_MODE_LABELS[Number(dive.mode) as DiveMode] ?? "-"} />
+            {draft && <Field label="Water temp" value={`${Number(draft.env.waterTemp)}${tempUnit(Number(dive.units))}`} />}
             <Field
               label="Deco"
-              value={Number(dive.decomp.totalDecompTimeMinutes)
-                ? `${Number(dive.decomp.totalDecompTimeMinutes)} min`
-                : "None"}
+              value={
+                draft && Number(draft.decomp.totalDecompTimeMinutes) > 0
+                  ? `${Number(draft.decomp.totalDecompTimeMinutes)} min`
+                  : "None on header"
+              }
             />
           </div>
 
-          {Boolean(dive.remarks) && (
-            <p className="text-xs text-text-secondary leading-relaxed">"{dive.remarks}"</p>
+          {draft?.remarks && (
+            <p className="text-xs text-text-secondary leading-relaxed">"{draft.remarks}"</p>
           )}
 
           {isVoided && dive.voidInfo && (

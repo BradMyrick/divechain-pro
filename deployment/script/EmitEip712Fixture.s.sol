@@ -15,10 +15,14 @@ contract EmitEip712Fixture is Script {
     address constant VERIFYING_CONTRACT = 0x5adF6d5150a62D67Fa1A18ac7ddE8fcbaD392565;
     uint256 constant DIVE_ID = 7;
     uint256 constant NONCE = 3;
+    // Deterministic stand-in for the dive's stored SHA-256 content hash
+    // (sha256("erc-8260 v2 fixture")).
+    bytes32 constant CONTENT_HASH = 0x9f3f1b9c2a5f4d5e6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f;
 
     function run() external {
-        bytes32 digest =
-            DiveLogTypedData.attestationDigest(DIVE_ID, VERIFYING_CONTRACT, CHAIN_ID, NONCE);
+        bytes32 digest = DiveLogTypedData.attestationDigest(
+            DIVE_ID, CONTENT_HASH, VERIFYING_CONTRACT, CHAIN_ID, NONCE
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ATTESTER_KEY, digest);
 
         string memory json = string.concat(
@@ -28,6 +32,8 @@ contract EmitEip712Fixture is Script {
             vm.toString(VERIFYING_CONTRACT),
             '","diveId":"',
             vm.toString(DIVE_ID),
+            '","contentHash":"',
+            vm.toString(CONTENT_HASH),
             '","nonce":"',
             vm.toString(NONCE),
             '","digest":"',

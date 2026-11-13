@@ -30,12 +30,18 @@ design; any remaining manual entry must be validated.
 
 ## 4. Attestations are EIP-712 bound and replay-proof (III)
 
-Buddy attestations are EIP-712 typed-data signatures bound to the logbook
-address and the dive number, with per-logbook nonces. The signature must be
-recoverable via `ecrecover` with low-s only (malleable high-s signatures are
-rejected). The attester identity is recovered from the signature, never from
-the relayer. `createLogbook`/`adoptLogbook` take no owner parameters, so
-relayed or front-run copies are harmless.
+Buddy attestations are EIP-712 typed-data signatures in the domain `DiveLog`,
+version `"2"`, bound to the logbook address, the dive number and the dive's
+stored `contentHash` (the SHA-256 of the exact attested UDDF bytes), with
+per-attester nonces. An attestation vouches for the dive record as stored
+under that id: the header and the UDDF its `contentHash` commits to.
+Attesters must review both before signing, and attestation clients should
+surface the stored header fields next to the hash so that review is
+possible. The signature must be recoverable via `ecrecover` with
+low-s only (malleable high-s signatures are rejected). The attester identity
+is recovered from the signature, never from the relayer.
+`createLogbook`/`adoptLogbook` take no owner parameters, so relayed or
+front-run copies are harmless.
 
 ## 5. Zero personal data on-chain (II)
 
@@ -52,10 +58,15 @@ chunk across transactions rather than raise the cap.
 
 ## 7. ERC-8260 conformance (IV)
 
-The dive-log interface is `IDiveLog` with ERC-165 id `0x321ef561`.
-`adoptLogbook` verifies ERC-165 support and `owner() == msg.sender` before
-registering an external logbook. A spoofed adoption can only pollute the
-spoofer's own registry slot; that trade-off is accepted and tested.
+The dive-log interface is `IDiveLog` with ERC-165 id `0x4d89a8f9` (the
+redesigned ERC-8260 v2 thin-header standard: uint32 YYYYMMDD dates, tenths
+depths, basis-point gas, bytes16 table schedule, bytes4 coarse geohash,
+required SHA-256 `contentHash` over the exact UDDF bytes). The on-chain
+record is a self-sufficient header; the rich profile stays off-chain,
+hash-anchored (DIV-D-1). `adoptLogbook` verifies ERC-165 support and
+`owner() == msg.sender` before registering an external logbook. A spoofed
+adoption can only pollute the spoofer's own registry slot; that trade-off is
+accepted and tested.
 
 ## 8. Trust-model honesty in client copy (II)
 
@@ -65,12 +76,17 @@ or "proof the dive happened". Attestations are endorsements, not proofs.
 
 ## 9. Deployments are byte-verified (IV)
 
-The deployed `DiveLogFactory` instances (Avalanche C-Chain 43114
-`0x3894070DDdA804f9ba96116c9bd810eF745f5999`, Fuji 43113
-`0x921dc74BA049748BdFeE471F641f48688aDF8b49`) were deployed from this source
-tree and verified byte-identical via direct `eth_getCode` comparison. Contract
-mitigations ship as a new reference implementation and redeployed factory,
-never in-place patches (the contracts are immutable by design).
+The deployed `DiveLogFactory` instances: v2 Avalanche C-Chain 43114
+`0x36eB0768Ba245A4D002F35E3a17D3210c9C6BB83` and Fuji 43113
+`0x2ec5e579E0B3e31C4c3e6ABE1F7c0eF7ACa4E740` (both 2026-11-13, solc 0.8.38);
+v1 legacy: C-Chain `0x3894070DDdA804f9ba96116c9bd810eF745f5999`, Fuji
+`0x921dc74BA049748BdFeE471F641f48688aDF8b49` (solc 0.8.34) were deployed
+from this source tree and verified byte-identical via direct `eth_getCode`
+comparison (metadata-hash-only deltas for flattened Remix deploys, as
+documented). The dApp pins the v2 factories; the v1 factories stay live for
+their existing books. Contract mitigations ship as a new reference
+implementation and redeployed factory, never in-place patches (the contracts
+are immutable by design).
 
 ## 10. Public-domain data provenance (V)
 

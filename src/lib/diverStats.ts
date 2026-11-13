@@ -1,8 +1,18 @@
-import type { DiveLog, VoidInfo, Attestation } from "./types";
-import { DiveMode, DivePurpose, BreathingGas, DIVE_MODE_LABELS, UnitSystem } from "./contracts";
+import type { DiveDraft, DiveHeader, VoidInfo, Attestation } from "./types";
+import {
+  DiveMode,
+  DivePurpose,
+  UnitSystem,
+  gasMixLabel,
+  tenthsToDepth,
+  ymdToString,
+  DIVE_MODE_LABELS,
+} from "./contracts";
 import { DEMO_ATTESTERS } from "../demo/fixtures";
 
-/** Working/commercial purposes fly the Alpha flag; everything else Diver Down. */
+/** A commercial (Alpha flag) dive, from the on-chain v2 mode alone:
+ *  surface-supplied and saturation work. Draft purpose can extend this for
+ *  local records (inspection, repair, search... fly the Alpha flag too). */
 const ALPHA_PURPOSES = new Set<number>([
   DivePurpose.Inspection,
   DivePurpose.Repair,
@@ -15,11 +25,16 @@ const ALPHA_PURPOSES = new Set<number>([
   DivePurpose.Security,
 ]);
 
-export function isCommercialDive(mode: number, purpose: number): boolean {
-  return mode === DiveMode.SSA || ALPHA_PURPOSES.has(purpose);
+export function isCommercialDive(mode: number, purpose?: number): boolean {
+  if (mode === DiveMode.SurfaceSupplied || mode === DiveMode.Saturation) return true;
+  return purpose !== undefined && ALPHA_PURPOSES.has(purpose);
 }
 
-export interface NormalizedDive extends DiveLog {
+/** A normalized dive: the on-chain v2 header (always present) plus the rich
+ *  local profile draft when this device holds it, void overlay and
+ *  attestations. Everything displayable derives from these. */
+export interface NormalizedDive extends DiveHeader {
+  draft?: DiveDraft;
   voidInfo?: VoidInfo;
   attestations: Attestation[];
 }
@@ -30,14 +45,14 @@ export interface DiverStats {
   totalBottomMinutes: number;
   recBottomMinutes: number;
   commercialBottomMinutes: number;
-  ssaDives: number;
-  maxDepth: number;
+  commercialDives: number;
+  maxDepth: number; // display units (tenths/10) of the deepest dive
   maxDepthUnits: number; // units enum of the deepest dive
   deepestDiveId?: bigint;
   attestedDives: number;
   attestationCoverage: number; // 0..1 of non-voided dives
   gasMixes: { label: string; count: number }[];
-  firstDiveDate?: number;
+  firstDiveDate?: number; // uint32 YYYYMMDD
   latestDiveDate?: number;
 }
 
@@ -48,7 +63,7 @@ export function computeDiverStats(dives: NormalizedDive[]): DiverStats {
   let totalBottomMinutes = 0;
   let recBottomMinutes = 0;
   let commercialBottomMinutes = 0;
-  let ssaDives = 0;
+  let commercialDives = 0;
   let maxDepth = 0;
   let maxDepthMeters = 0;
   let deepestDiveId: bigint | undefined;
@@ -56,27 +71,32 @@ export function computeDiverStats(dives: NormalizedDive[]): DiverStats {
   let attestedDives = 0;
   let firstDiveDate: number | undefined;
   let latestDiveDate: number | undefined;
-  const gasCounts = new Map<number, number>();
+  const gasCounts = new Map<string, number>();
 
   for (const d of active) {
-    const bt = Number(d.data.bottomTimeMinutes) || 0;
+    const btSec = Number(d.bottomTimeSeconds) > 0 ? Number(d.bottomTimeSeconds) : Number(d.durationSeconds);
+    const bt = Math.round(btSec / 60);
     totalBottomMinutes += bt;
-    if (isCommercialDive(Number(d.data.mode), Number(d.data.purpose))) {
+    const purpose = d.draft ? Number(d.draft.data.purpose) : undefined;
+    if (isCommercialDive(Number(d.mode), purpose)) {
       commercialBottomMinutes += bt;
+      commercialDives++;
     } else {
       recBottomMinutes += bt;
     }
-    if (Number(d.data.mode) === DiveMode.SSA) ssaDives++;
-    const depth = Number(d.data.maxDepth) || 0;
-    const depthMeters = Number(d.units) === UnitSystem.Imperial ? depth * 0.3048 : depth;
+    const depthTenths = Number(d.maxDepth) || 0;
+    const depthDisplay = tenthsToDepth(depthTenths);
+    const depthMeters =
+      Number(d.units) === UnitSystem.Imperial ? depthDisplay * 0.3048 : depthDisplay;
     if (depthMeters > maxDepthMeters) {
-      maxDepth = depth;
+      maxDepth = depthDisplay;
       maxDepthMeters = depthMeters;
       deepestDiveId = d.id;
       maxDepthUnits = Number(d.units);
     }
     if (d.attestations.length > 0) attestedDives++;
-    gasCounts.set(Number(d.gas.gasType), (gasCounts.get(Number(d.gas.gasType)) ?? 0) + 1);
+    const mix = gasMixLabel(Number(d.o2Bps), Number(d.heBps));
+    gasCounts.set(mix, (gasCounts.get(mix) ?? 0) + 1);
     const date = Number(d.diveDate);
     if (!firstDiveDate || date < firstDiveDate) firstDiveDate = date;
     if (!latestDiveDate || date > latestDiveDate) latestDiveDate = date;
@@ -84,10 +104,7 @@ export function computeDiverStats(dives: NormalizedDive[]): DiverStats {
 
   const gasMixes = [...gasCounts.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([gas, count]) => ({
-      label: gasLabel(gas, dives),
-      count,
-    }));
+    .map(([label, count]) => ({ label, count }));
 
   return {
     totalDives: active.length,
@@ -95,7 +112,7 @@ export function computeDiverStats(dives: NormalizedDive[]): DiverStats {
     totalBottomMinutes,
     recBottomMinutes,
     commercialBottomMinutes,
-    ssaDives,
+    commercialDives,
     maxDepth,
     maxDepthUnits,
     deepestDiveId,
@@ -107,32 +124,16 @@ export function computeDiverStats(dives: NormalizedDive[]): DiverStats {
   };
 }
 
-function gasLabel(gas: number, dives: NormalizedDive[]): string {
-  const names: Record<number, string> = {
-    [BreathingGas.Air]: "Air",
-    [BreathingGas.Nitrox]: "Nitrox",
-    [BreathingGas.Heliox]: "Heliox",
-    [BreathingGas.Trimix]: "Trimix",
-    [BreathingGas.Oxygen]: "Oxygen",
-    [BreathingGas.Mixed]: "Mixed",
-  };
-  const name = names[gas] ?? "Air";
-  if (gas === BreathingGas.Nitrox || gas === BreathingGas.Trimix) {
-    const sample = dives.find((d) => Number(d.gas.gasType) === gas);
-    if (sample) {
-      const o2 = Math.round(Number(sample.gas.o2Percent) / 100);
-      const he = Math.round(Number(sample.gas.hePercent) / 100);
-      return gas === BreathingGas.Trimix ? `TMX ${o2}/${he}` : `Nitrox ${o2}%`;
-    }
-  }
-  return name;
-}
-
 export function formatMinutes(total: number): string {
   const h = Math.floor(total / 60);
-  const m = total % 60;
+  const m = Math.round(total % 60);
   if (h === 0) return `${m}m`;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/** "2026-05-14" from a uint32 YYYYMMDD header date. */
+export function diveDayString(diveDate: number): string {
+  return ymdToString(Number(diveDate));
 }
 
 /** Attester quality tier, on-chain reputation from their own logbook, when known. */

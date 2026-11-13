@@ -36,14 +36,15 @@ public, censorship-resistant chain.
 ## How it works
 
 1. **Get a wallet** (Core, MetaMask, Rabby). Your wallet is the only key to your logbook.
-2. **Add a little AVAX** to cover gas (about 0.005 AVAX to claim, about 0.001 AVAX
-   per dive; measured Oct 2026).
+2. **Add a little AVAX** to cover gas (about 0.005 AVAX to claim, under 0.002 AVAX
+   per dive at the v2 header's ~154k gas; measured Nov 2026).
 3. **Claim your logbook** - one transaction deploys a fresh `SovereignDiveLog` contract
    owned by your wallet. The `DiveLogFactory` registry records the wallet -> logbook
    mapping on-chain, so any device, browser, or wallet can rediscover your logbook -
    no manual re-binding, ever. No admin key, no backdoor.
 4. **Log dives** - depth, time, gas, environment. Your buddy signs an **EIP-712 typed-data
-   attestation** vouching the dive happened, bound to your logbook and dive number.
+   attestation** vouching the dive happened, cryptographically bound to your logbook, the
+   dive number, and the SHA-256 of the dive's UDDF profile.
 
 Each diver gets their **own** contract address. Nothing about you is stored except what
 the standard requires - no name, birth date, certification number, or biometrics. Your
@@ -63,16 +64,25 @@ wallet address is your identity.
 ## ERC-8260 - the Sovereign Dive Log standard
 
 DiveChain is the reference implementation of **ERC-8260**, an open dive-log
-interface (`IDiveLog`, ERC-165 id `0x321ef561`) defining a rich, normalized dive
-record: units system, dive mode (SSA/SCUBA), breathing gas, purpose, suit and bottom
-type, decompression, and EIP-712 buddy attestations.
+interface (`IDiveLog`, ERC-165 id `0x4d89a8f9`). Each dive is a thin,
+self-sufficient on-chain header: UTC date (YYYYMMDD), leave-surface time,
+max depth in tenths, total duration and bottom time, decompression table and
+schedule, both repetitive groups, surface interval, dive mode (open circuit
+recreational/technical, CCR/SCR, freedive, surface-supplied, saturation),
+unit system, primary breathing gas in basis points, and a coarse geohash.
+A required `contentHash` binds every dive to the exact bytes of its UDDF 3.x
+profile, and optional EIP-712 buddy attestations sign that hash.
 
 - **Contracts, tests & deployment scripts:** see [`deployment/`](./deployment/README.md).
-  `SovereignDiveLog.sol` is the ERC reference implementation (plus a pending upstream
-  hardening patch: EIP-2 canonical signatures, bounded batches, non-zero dates - see
-  [SECURITY.md](./SECURITY.md)). `DiveLogFactory.sol` is the wallet -> logbook registry.
+  `SovereignDiveLog.sol` is the ERC reference implementation (a verbatim copy
+  of the redesigned upstream asset, modulo one comment character; see the
+  provenance note there). `DiveLogFactory.sol` is the wallet -> logbook registry.
 - Divers deploy their **own** `SovereignDiveLog` through the factory, so every diver owns
   a separate, sovereign logbook that any ERC-8260 client can discover on-chain.
+- The rich profile behind each `contentHash` is generated in the browser,
+  kept locally (export it any time), and can be published encrypted to IPFS
+  at the diver's option - the on-chain header stays the permanent, verifiable
+  record either way.
 
 ## App overview
 
@@ -128,7 +138,9 @@ The importer auto-detects three shapes:
   {
     "date": "2026-07-04",              // required, YYYY-MM-DD
     "units": "imperial",               // imperial | metric (depths follow it)
-    "mode": "scuba",                   // ssa | scuba
+    "mode": "oc-recreational",         // oc-recreational | oc-technical | ccr | scr |
+                                       // freedive | surface-supplied | saturation
+                                       // (legacy aliases: scuba, ssa)
     "purpose": "recreational",         // training, inspection, repair, search,
                                        // salvage, recovery, construction,
                                        // research, eod, security,
@@ -143,7 +155,7 @@ The importer auto-detects three shapes:
       "reachedSurface": "10:01"
     },
     "gas": { "type": "nitrox", "o2Percent": 32 },
-    "deco": { "type": "standard", "totalMinutes": 6, "tableSchedule": "60/120" },
+    "deco": { "type": "standard", "totalMinutes": 6, "tableSchedule": "USN 60/120" },
     "environment": {
       "location": "Buccoo Reef, Tobago",
       "latitude": 11.212,
@@ -158,9 +170,13 @@ The importer auto-detects three shapes:
 ```
 
 Enum names, never numbers. Every field except `date`, `maxDepth`, and
-`bottomTimeMinutes` is optional. Dates are stored at noon UTC so they read as
-the same calendar day in every timezone. Dive-computer export parsers (UDDF,
-Shearwater, Suunto) are on the roadmap — see [BACKLOG.md](./BACKLOG.md).
+`bottomTimeMinutes` is optional. The rich fields feed the deterministic UDDF
+profile each dive commits to on-chain (`contentHash`); the thin header
+carries the date, tenths-of-unit depths, basis-point gas, the bytes16 table
+schedule and a precision-4 geohash derived from the coordinates. Table
+schedules are `<TOKEN>[ <schedule>]` with a normative token: USN, PADI, NAUI,
+BSAC, BUEHL, DCIEM, CSMD, COMEX, OTHER. Dive-computer export parsers (UDDF,
+Shearwater, Suunto) are on the roadmap; see [BACKLOG.md](./BACKLOG.md).
 
 ## Tech stack
 
@@ -252,16 +268,21 @@ The `DiveLogFactory` is deployed once per network (see
 ## Source & deployments
 
 This repository is the complete product: dApp, contracts, tests, indexer. The
-`DiveLogFactory` contracts below were deployed from this exact source tree and
-verified **byte-identical** to this repository's compilation (direct
-`eth_getCode` comparison — see [`deployment/README.md`](./deployment/README.md)):
+`DiveLogFactory` contracts below were deployed from this source tree (or its
+v1-era pin) and verified **byte-identical** to this repo's compilation by
+direct `eth_getCode` comparison (only the source-metadata hash differs for
+flattened Remix deploys; see [`deployment/README.md`](./deployment/README.md)):
 
-| Network | Chain ID | DiveLogFactory |
+| Network | Chain ID | DiveLogFactory v2 (live) |
 | --- | --- | --- |
-| Avalanche C-Chain | 43114 | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
-| Avalanche Fuji | 43113 | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
+| Avalanche C-Chain | 43114 | `0x36eB0768Ba245A4D002F35E3a17D3210c9C6BB83` |
+| Avalanche Fuji | 43113 | `0x2ec5e579E0B3e31C4c3e6ABE1F7c0eF7ACa4E740` |
 
-What you deploy is what you read — no unaudited bytecode in between.
+The v2 factories (deployed 2026-11-13 at solc 0.8.38 / cancun / optimizer
+200) mint ERC-8260 v2 thin-header logbooks and are what the dApp pins. The
+v1-era factories remain on-chain for their existing books (addresses in the
+deployment README). What you deploy is what you read; no unaudited bytecode
+in between.
 
 ## License
 

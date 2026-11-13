@@ -15,13 +15,19 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
  * deployment = code change + full verification (see deployment/README.md).
  *
  * Both live deployments verified byte-identical to this repo's compilation
- * (solc 0.8.34 / cancun / optimizer 200) — see deployment/foundry.toml.
+ * (v1: solc 0.8.34; v2: solc 0.8.38, cancun + optimizer 200); see deployment/foundry.toml.
  * Anvil: the first default-foundry deployer account address (nonce 0).
+ *
+ * v2 factories (ERC-8260 thin-header logbooks) deployed 2026-11-13 from
+ * Remix at solc 0.8.38 / cancun / optimizer 200; runtime code verified
+ * byte-identical by eth_getCode on both chains (metadata hash only differs,
+ * flattened vs multi-file). The v1-era addresses are kept in
+ * deployment/README.md for history.
  */
 export const FACTORY_ADDRESSES: Record<number, `0x${string}`> = {
   31337: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-  43113: "0x921dc74BA049748BdFeE471F641f48688aDF8b49",
-  43114: "0x3894070DDdA804f9ba96116c9bd810eF745f5999",
+  43113: "0x2ec5e579E0B3e31C4c3e6ABE1F7c0eF7ACa4E740", // Fuji v2 (2026-11-13)
+  43114: "0x36eB0768Ba245A4D002F35E3a17D3210c9C6BB83", // C-Chain v2 (2026-11-13)
 };
 
 export function factoryAddress(chainId: number | undefined): `0x${string}` | undefined {

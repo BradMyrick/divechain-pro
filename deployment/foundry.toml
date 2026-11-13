@@ -2,11 +2,16 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-# Compiler settings verified to reproduce the live DiveLogFactory bytecode
-# byte-for-byte (Fuji 0x921dc74BA049748BdFeE471F641f48688aDF8b49, deployed via
-# Avalanche Builders Hub): solc 0.8.34 + cancun + optimizer 200. Only the
-# embedded source-metadata hash differs (multi-file vs flattened layout).
-solc = "0.8.34"
+# Compiler settings. The live v1 factories (Fuji 0x921dc74BA049748BdFeE471F641f48688aDF8b49,
+# C-Chain 0x3894070DDdA804f9ba96116c9bd810eF745f5999, deployed via Avalanche
+# Builders Hub) were verified byte-for-byte at solc 0.8.34. The v2 pin moves
+# to 0.8.38 (bug-fix-only release, empty known-bug list, fixes the Yul
+# optimizer stale-bookkeeping bug that 0.8.19-0.8.37 shipped): measured gas
+# is identical (logDive median 154,165; createLogbook median 2,341,779) and
+# SovereignDiveLog runtime code is unchanged apart from the metadata tail.
+# evm_version stays cancun: the Helicon upgrade (2026) did not move the
+# C-Chain EVM fork level, and Avalanche's deployment guidance targets cancun.
+solc = "0.8.38"
 optimizer = true
 optimizer_runs = 200
 via_ir = false

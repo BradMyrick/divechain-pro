@@ -4,7 +4,7 @@ import {
   useAccount, useSignTypedData, useSwitchChain, useReadContract, useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { SOVEREIGN_DIVE_LOG_ABI } from "../lib/contracts";
+import { SOVEREIGN_DIVE_LOG_ABI, depthUnit, tenthsToDepth, ymdToString } from "../lib/contracts";
 import {
   buildAttestationTypedData, parseAttestationRequestParams,
   buildSignatureHandoffUrl, parseSignatureHandoff,
@@ -39,6 +39,9 @@ export default function Attest() {
     args: [address],
     query: { enabled: !!req && !!address },
   });
+  const contentHash = ((dive as Record<string, unknown> | undefined)?.contentHash ?? undefined) as
+    | `0x${string}`
+    | undefined;
 
   const { signTypedDataAsync, isPending: isSigning } = useSignTypedData();
   const { writeContract, data: txHash, isPending: isRelaying, error: relayError } = useWriteContract();
@@ -67,15 +70,22 @@ export default function Attest() {
 
   const onWrongChain = !!chain && chain.id !== req.chainId;
   const diveRec = dive as Record<string, unknown> | undefined;
-  const diveData = diveRec?.data as Record<string, unknown> | undefined;
-  const diveEnv = diveRec?.env as Record<string, unknown> | undefined;
+  const diveDay = ymdToString(Number(diveRec?.diveDate ?? 0));
+  const diveMaxDepth = tenthsToDepth(Number(diveRec?.maxDepth ?? 0));
+  const diveUnits = Number(diveRec?.units ?? 0);
 
   const handleSign = async () => {
-    if (!address || nonce === undefined) return;
+    if (!address || nonce === undefined || !contentHash) return;
     setSignError("");
     try {
       const sig = await signTypedDataAsync(
-        buildAttestationTypedData(req.chainId, req.contractAddress, req.diveId, nonce as bigint) as never,
+        buildAttestationTypedData(
+          req.chainId,
+          req.contractAddress,
+          req.diveId,
+          contentHash,
+          nonce as bigint,
+        ) as never,
       );
       setSignature(sig);
     } catch (e) {
@@ -84,12 +94,12 @@ export default function Attest() {
   };
 
   const handleRelay = (sig: `0x${string}`, n: bigint) => {
-    if (!req) return;
+    if (!req || !contentHash) return;
     writeContract({
       address: req.contractAddress,
       abi: SOVEREIGN_DIVE_LOG_ABI,
       functionName: "attestDive",
-      args: [req.diveId, n, sig],
+      args: [req.diveId, contentHash, n, sig],
     });
   };
 
@@ -103,8 +113,8 @@ export default function Attest() {
         <div className="inline-flex items-center gap-2 pill pill-kelp mb-3"><ShieldCheck className="w-3.5 h-3.5" /> EIP-712 Attestation</div>
         <h1 className="text-3xl font-bold gradient-text">Attest a dive</h1>
         <p className="text-sm text-text-tertiary mt-2 max-w-md mx-auto">
-          You're vouching that this dive happened. Your signature is cryptographically bound to this exact
-          logbook, chain and dive - it can't be replayed elsewhere.
+          You're vouching for this dive record. Your signature is cryptographically bound to this exact
+          logbook, chain, dive and the profile's content hash - it can't be replayed elsewhere.
         </p>
       </div>
 
@@ -115,10 +125,10 @@ export default function Attest() {
           <div className="flex items-center gap-2 text-text-tertiary text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Loading dive…</div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            <Preview label="Location" value={String(diveEnv?.location ?? "-")} />
-            <Preview label="Date" value={new Date(Number(diveRec.diveDate) * 1000).toLocaleDateString()} />
-            <Preview label="Max Depth" value={`${diveData?.maxDepth ?? "-"}`} />
-            <Preview label="Bottom Time" value={`${diveData?.bottomTimeMinutes ?? "-"} min`} />
+            <Preview label="Date" value={diveDay || "-"} />
+            <Preview label="Max Depth" value={`${diveMaxDepth}${depthUnit(diveUnits)}`} />
+            <Preview label="Dive time" value={`${Math.round(Number(diveRec?.durationSeconds ?? 0) / 60)} min`} />
+            <Preview label="Profile hash" value={`${String(diveRec?.contentHash ?? "").slice(0, 10)}…${String(diveRec?.contentHash ?? "").slice(-6)}`} />
           </div>
         )}
         <p className="text-[10px] text-text-tertiary mt-3 break-all font-mono">{req.contractAddress}</p>
@@ -188,7 +198,7 @@ export default function Attest() {
           <p className="text-xs text-text-tertiary mt-1">Your signature is now permanently part of this dive's proof.</p>
         </div>
       ) : !signature ? (
-        <button onClick={handleSign} disabled={!address || nonce === undefined || onWrongChain || isSigning} className="btn-primary w-full text-base">
+        <button onClick={handleSign} disabled={!address || nonce === undefined || !contentHash || onWrongChain || isSigning} className="btn-primary w-full text-base">
           {isSigning ? <><Loader2 className="w-4 h-4 animate-spin" /> Sign in wallet…</> : <><PenLine className="w-4 h-4" /> Sign attestation (free)</>}
         </button>
       ) : (

@@ -32,10 +32,12 @@ whitepaper lives at `.aiwrangler/whitepaper.txt` (cached; put a real PDF at
   substantive revision. Fix every cited finding; do not declare done on
   DEGRADED.
 - `human` verdicts (keys, signatures, EIP-712 domain, deployed addresses,
-  digests) are resolved by the owner reviewing the diff in the webui
-  (`aiwrangler-webui` from this directory) and acknowledging it there.
-- Never weaken a gate to pass it; overrides set in the webui expire on the
-  next PASS by design.
+  digests) are resolved by the owner acknowledging the finding via the
+  AiWrangler owner CLI (`aiwrangler ack --rules <RULE>` from this directory;
+  list pending findings with a bare `aiwrangler ack`) or the equivalent
+  in-editor `wrangler_ack` elicitation prompt.
+- Never weaken a gate to pass it; overrides set via `aiwrangler override`
+  expire on the next PASS by design.
 
 ## Invariants that trump convenience
 

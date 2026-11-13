@@ -56,7 +56,7 @@ export async function indexChain(key) {
   for (const [owner, { logbook, via }] of registry) {
     try {
       const [diveCount, diveLogs, attLogs, voidLogs] = await Promise.all([
-        client.readContract({ address: logbook, abi: logAbi, functionName: "diveCount" }),
+        client.readContract({ address: logbook, abi: logAbi, functionName: "getDiveCount" }),
         client.getLogs({ address: logbook, event: diveLogged, fromBlock: cfg.startBlock, toBlock: latest }),
         client.getLogs({ address: logbook, event: diveAttested, fromBlock: cfg.startBlock, toBlock: latest }),
         client.getLogs({ address: logbook, event: diveVoided, fromBlock: cfg.startBlock, toBlock: latest }),
@@ -70,6 +70,7 @@ export async function indexChain(key) {
         dives: Number(diveCount),
         attestations: attLogs.length,
         voided: voidLogs.length,
+        // v2 headers store uint32 YYYYMMDD calendar dates (sortable as numbers)
         firstDiveDate: dates[0],
         latestDiveDate: dates[dates.length - 1],
       });

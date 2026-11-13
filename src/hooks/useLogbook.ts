@@ -3,66 +3,36 @@
 import { useMemo } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import { SOVEREIGN_DIVE_LOG_ABI } from "../lib/contracts";
-import type { DiveLog, VoidInfo, Attestation } from "../lib/types";
+import type { DiveHeader, VoidInfo, Attestation } from "../lib/types";
 import type { NormalizedDive } from "../lib/diverStats";
+import { getProfile } from "../lib/profileVault";
 import { DEMO_DIVES } from "../demo/fixtures";
 
-const CHUNK_SIZE = 100;
-
 /**
- * Normalize a viem-decoded DiveLog (bigint numerics) to the number-based shape
- * declared in src/lib/types.ts. id stays bigint.
+ * Normalize a viem-decoded DiveHeader (bigint numerics) to the number-based
+ * shape declared in src/lib/types.ts. id stays bigint.
  */
-export function normalizeDive(raw: unknown): DiveLog {
+export function normalizeDive(raw: unknown): DiveHeader {
   const d = raw as Record<string, any>;
   const num = (v: unknown): number => (typeof v === "bigint" ? Number(v) : Number(v ?? 0));
   return {
     id: BigInt(d.id),
     diveDate: num(d.diveDate),
+    startTime: num(d.startTime),
+    maxDepth: num(d.maxDepth),
+    durationSeconds: num(d.durationSeconds),
+    bottomTimeSeconds: num(d.bottomTimeSeconds),
+    mode: num(d.mode),
     units: num(d.units),
-    data: {
-      leaveSurfaceTime: num(d.data?.leaveSurfaceTime),
-      leaveBottomTime: num(d.data?.leaveBottomTime),
-      reachSurfaceTime: num(d.data?.reachSurfaceTime),
-      bottomTimeMinutes: num(d.data?.bottomTimeMinutes),
-      maxDepth: num(d.data?.maxDepth),
-      averageDepth: num(d.data?.averageDepth),
-      mode: num(d.data?.mode),
-      purpose: num(d.data?.purpose),
-      suit: num(d.data?.suit),
-    },
-    env: {
-      airTemp: num(d.env?.airTemp),
-      waterTemp: num(d.env?.waterTemp),
-      currentKnots: num(d.env?.currentKnots),
-      bottomType: num(d.env?.bottomType),
-      coords: {
-        latitude: num(d.env?.coords?.latitude),
-        longitude: num(d.env?.coords?.longitude),
-      },
-      location: String(d.env?.location ?? ""),
-      weatherConditions: String(d.env?.weatherConditions ?? ""),
-    },
-    decomp: {
-      decompType: num(d.decomp?.decompType),
-      totalDecompTimeMinutes: num(d.decomp?.totalDecompTimeMinutes),
-      maxDepthAttained: num(d.decomp?.maxDepthAttained),
-      tableSchedule: (d.decomp?.tableSchedule ?? "0x" + "0".repeat(64)) as `0x${string}`,
-      repetitiveGroup: (d.decomp?.repetitiveGroup ?? "0x00") as `0x${string}`,
-      surfaceIntervalMinutes: num(d.decomp?.surfaceIntervalMinutes),
-      newRepetitiveGroup: (d.decomp?.newRepetitiveGroup ?? "0x00") as `0x${string}`,
-    },
-    gas: {
-      gasType: num(d.gas?.gasType),
-      o2Percent: num(d.gas?.o2Percent),
-      hePercent: num(d.gas?.hePercent),
-      n2Percent: num(d.gas?.n2Percent),
-      cylinderPressureIn: num(d.gas?.cylinderPressureIn),
-      cylinderPressureOut: num(d.gas?.cylinderPressureOut),
-      gasConsumed: num(d.gas?.gasConsumed),
-      bailoutPressure: num(d.gas?.bailoutPressure),
-    },
-    remarks: String(d.remarks ?? ""),
+    o2Bps: num(d.o2Bps),
+    heBps: num(d.heBps),
+    tableSchedule: (d.tableSchedule ?? "0x" + "0".repeat(32)) as `0x${string}`,
+    surfaceIntervalSeconds: num(d.surfaceIntervalSeconds),
+    repetitiveGroup: (d.repetitiveGroup ?? "0x00") as `0x${string}`,
+    repetitiveGroupAfterSI: (d.repetitiveGroupAfterSI ?? "0x00") as `0x${string}`,
+    coarseGeohash: (d.coarseGeohash ?? "0x00000000") as `0x${string}`,
+    contentHash: (d.contentHash ?? "0x" + "0".repeat(64)) as `0x${string}`,
+    profileURI: String(d.profileURI ?? ""),
   };
 }
 
@@ -76,12 +46,13 @@ export interface LogbookData {
 }
 
 /**
- * Read a logbook efficiently with a single useReadContracts batch:
- *  - diveCount + owner: 2 reads
- *  - dives: getMultipleDives in chunks of 100
- *  - void info + attestations: one read per dive
- * Replaces the old per-component hook chain (3 RPCs per dive).
- * Dive IDs are derived 1..count. ERC-8260 guarantees sequential IDs from 1.
+ * Read a logbook efficiently with batched useReadContracts calls:
+ *  - getDiveCount + owner: 2 reads
+ *  - headers: getDive per id (ids are sequential 1..count, per ERC-8260 v2;
+ *    the standard intentionally has no unbounded array getters)
+ *  - void info + attestation counts: one read per dive
+ *  - attestations: getAttestation(id, i) per index, second batched phase
+ * Rich profile data joins from the local vault when this device holds it.
  */
 export function useLogbookData(
   address: `0x${string}` | undefined,
@@ -92,7 +63,7 @@ export function useLogbookData(
   const { data: countData, isLoading: countLoading } = useReadContract({
     address,
     abi: SOVEREIGN_DIVE_LOG_ABI,
-    functionName: "diveCount",
+    functionName: "getDiveCount",
     query: { enabled: !!address },
   });
   const { data: ownerData, isLoading: ownerLoading } = useReadContract({
@@ -110,16 +81,14 @@ export function useLogbookData(
 
   const contracts = useMemo(() => {
     const list: unknown[] = [];
-    const chunks: bigint[][] = [];
-    for (let i = 0; i < ids.length; i += CHUNK_SIZE) chunks.push(ids.slice(i, i + CHUNK_SIZE));
-    for (const chunk of chunks) {
-      list.push({ address, abi: SOVEREIGN_DIVE_LOG_ABI, functionName: "getMultipleDives", args: [chunk] });
+    for (const id of ids) {
+      list.push({ address, abi: SOVEREIGN_DIVE_LOG_ABI, functionName: "getDive", args: [id] });
     }
     for (const id of ids) {
       list.push({ address, abi: SOVEREIGN_DIVE_LOG_ABI, functionName: "getVoidInfo", args: [id] });
     }
     for (const id of ids) {
-      list.push({ address, abi: SOVEREIGN_DIVE_LOG_ABI, functionName: "getAttestations", args: [id] });
+      list.push({ address, abi: SOVEREIGN_DIVE_LOG_ABI, functionName: "attestationCount", args: [id] });
     }
     return list;
   }, [address, ids]);
@@ -131,29 +100,67 @@ export function useLogbookData(
   const batchResults =
     batchRaw as readonly { status: "success" | "failure"; result?: unknown }[] | undefined;
 
+  const headers = useMemo<DiveHeader[]>(() => {
+    if (!batchResults) return [];
+    const list: DiveHeader[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      const r = batchResults[i];
+      if (r?.status === "success" && r.result) list.push(normalizeDive(r.result));
+    }
+    return list;
+  }, [batchResults, ids.length]);
+
+  const attCounts = useMemo<number[]>(() => {
+    if (!batchResults) return [];
+    const base = ids.length * 2;
+    return ids.map((_, i) => {
+      const r = batchResults[base + i];
+      return r?.status === "success" ? Number(r.result ?? 0) : 0;
+    });
+  }, [batchResults, ids]);
+
+  // Phase 2: fetch each attestation by index (bounded reads per the standard).
+  const attContracts = useMemo(() => {
+    const list: unknown[] = [];
+    headers.forEach((h, i) => {
+      for (let j = 0; j < (attCounts[i] ?? 0); j++) {
+        list.push({
+          address,
+          abi: SOVEREIGN_DIVE_LOG_ABI,
+          functionName: "getAttestation",
+          args: [h.id, BigInt(j)],
+        });
+      }
+    });
+    return list;
+  }, [address, headers, attCounts]);
+
+  const { data: attRaw } = useReadContracts({
+    contracts: attContracts as never,
+    query: { enabled: !!address && attContracts.length > 0 },
+  });
+
   const dives = useMemo<NormalizedDive[]>(() => {
     if (demo) return DEMO_DIVES;
-    if (!batchResults) return [];
-    const chunkCount = Math.ceil(ids.length / CHUNK_SIZE);
-    const list: DiveLog[] = [];
-    for (let c = 0; c < chunkCount; c++) {
-      const r = batchResults[c];
-      if (r?.status === "success" && Array.isArray(r.result)) {
-        list.push(...(r.result as unknown[]).map(normalizeDive));
+    const attResults =
+      attRaw as readonly { status: "success" | "failure"; result?: unknown }[] | undefined;
+    let attCursor = 0;
+    return headers.map((h, i) => {
+      const v = batchResults?.[ids.length + i];
+      const atts: Attestation[] = [];
+      for (let j = 0; j < (attCounts[i] ?? 0); j++) {
+        const r = attResults?.[attCursor++];
+        if (r?.status === "success" && r.result) atts.push(r.result as Attestation);
       }
-    }
-    const voidBase = chunkCount;
-    const attBase = chunkCount + ids.length;
-    return list.map((d, i) => {
-      const v = batchResults[voidBase + i];
-      const a = batchResults[attBase + i];
+      const stored = getProfile(h.contentHash);
       return {
-        ...d,
+        ...h,
+        draft: stored?.draft,
         voidInfo: v?.status === "success" ? (v.result as VoidInfo) : undefined,
-        attestations: a?.status === "success" && Array.isArray(a.result) ? (a.result as Attestation[]) : [],
+        attestations: atts,
       };
     });
-  }, [demo, batchResults, ids.length]);
+  }, [demo, headers, attCounts, attRaw, batchResults, ids.length]);
 
   const isLoading =
     !!address && (countLoading || ownerLoading || (ids.length > 0 && batchLoading));

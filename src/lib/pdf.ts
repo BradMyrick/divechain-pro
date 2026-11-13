@@ -1,8 +1,9 @@
 import type { DiverStats, NormalizedDive } from "./diverStats";
 import { formatMinutes, isCommercialDive } from "./diverStats";
 import {
-  DIVE_PURPOSE_LABELS, DIVE_MODE_LABELS, BREATHING_GAS_LABELS, depthUnit,
-  DivePurpose, DiveMode, BreathingGas, UnitSystem,
+  DIVE_PURPOSE_LABELS, DIVE_MODE_LABELS, depthUnit,
+  DivePurpose, DiveMode, UnitSystem,
+  gasMixLabel, tenthsToDepth, ymdToString,
 } from "./contracts";
 
 export interface PdfDiver {
@@ -12,19 +13,16 @@ export interface PdfDiver {
   logbook: string;
 }
 
-function fmtDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleDateString("en-US", {
+function fmtDate(ymd: number): string {
+  const day = ymdToString(Number(ymd));
+  if (!day) return "-";
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
     year: "numeric", month: "short", day: "numeric",
   });
 }
 
 function gasDisplay(d: NormalizedDive): string {
-  const label = BREATHING_GAS_LABELS[Number(d.gas.gasType) as BreathingGas] ?? "Air";
-  const o2 = Math.round(Number(d.gas.o2Percent) / 100);
-  const he = Math.round(Number(d.gas.hePercent) / 100);
-  if (label === "Nitrox") return `Nitrox ${o2}%`;
-  if (label === "Trimix") return `TMX ${o2}/${he}`;
-  return label;
+  return gasMixLabel(Number(d.o2Bps), Number(d.heBps));
 }
 
 /** Commercial-style dive logbook sheet: one row per dive, print-friendly. */
@@ -90,15 +88,22 @@ export async function exportLogbookSheet(diver: PdfDiver, dives: NormalizedDive[
 
   const active = dives.filter((d) => !d.voidInfo?.isVoided).sort((a, b) => Number(b.diveDate) - Number(a.diveDate));
   for (const d of active) {
+    const btMin =
+      Number(d.bottomTimeSeconds) > 0
+        ? Math.round(Number(d.bottomTimeSeconds) / 60)
+        : Math.round(Number(d.durationSeconds) / 60);
+    const decoMin = d.draft
+      ? Number(d.draft.decomp.totalDecompTimeMinutes)
+      : Math.max(0, Math.round((Number(d.durationSeconds) - Number(d.bottomTimeSeconds)) / 60));
     row([
       String(d.id),
       fmtDate(Number(d.diveDate)),
-      String(d.env.location || "—"),
-      DIVE_MODE_LABELS[Number(d.data.mode) as DiveMode] ?? "-",
-      DIVE_PURPOSE_LABELS[Number(d.data.purpose) as DivePurpose] ?? "-",
-      `${Number(d.data.maxDepth)}${depthUnit(Number(d.units) as UnitSystem)}`,
-      String(Number(d.data.bottomTimeMinutes)),
-      Number(d.decomp.totalDecompTimeMinutes) ? `${Number(d.decomp.totalDecompTimeMinutes)}m` : "—",
+      String(d.draft?.env.location || "-"),
+      DIVE_MODE_LABELS[Number(d.mode) as DiveMode] ?? "-",
+      d.draft ? (DIVE_PURPOSE_LABELS[Number(d.draft.data.purpose) as DivePurpose] ?? "-") : "-",
+      `${tenthsToDepth(Number(d.maxDepth))}${depthUnit(Number(d.units) as UnitSystem)}`,
+      String(btMin),
+      decoMin > 0 ? `${decoMin}m` : "-",
       gasDisplay(d),
       String(d.attestations.length),
     ]);
@@ -108,7 +113,7 @@ export async function exportLogbookSheet(diver: PdfDiver, dives: NormalizedDive[
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.text(
-    `Totals — ${stats.totalDives} dives · ${formatMinutes(stats.totalBottomMinutes)} bottom time · ` +
+    `Totals - ${stats.totalDives} dives · ${formatMinutes(stats.totalBottomMinutes)} bottom time · ` +
     `deepest ${stats.maxDepth}${depthUnit(stats.maxDepthUnits as UnitSystem)} · ` +
     `${Math.round(stats.attestationCoverage * 100)}% attested`,
     M, y,
@@ -157,7 +162,7 @@ export async function exportDiveResume(diver: PdfDiver, stats: DiverStats) {
   const top2 = 82;
   stat("Recreational", formatMinutes(stats.recBottomMinutes), M, top2);
   stat("Commercial / SSA", formatMinutes(stats.commercialBottomMinutes), M + 55, top2);
-  stat("Surface-supplied dives", String(stats.ssaDives), M + 120, top2);
+  stat("Surface-supplied dives", String(stats.commercialDives), M + 120, top2);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);

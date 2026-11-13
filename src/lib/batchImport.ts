@@ -1,16 +1,20 @@
 // Batch dive import: client-side parsing, validation, dedup and chunking.
 //
-// Everything here is pure and runs in the browser — no dive data leaves the
+// Everything here is pure and runs in the browser - no dive data leaves the
 // page until the user signs a transaction. Parsers are a pluggable registry
 // (SPEC-6: client-side importers chunk across transactions rather than raise
 // the contract's MAX_BATCH_SIZE cap; PAPER-IX: values from any file are
 // untrusted until validated against the contract's own guards).
 //
+// v2: parsed rows carry the rich DiveDraft. The thin on-chain header (and the
+// required UDDF contentHash) is derived at send time via prepareDiveInput, so
+// edits in the reviewer never invalidate an earlier hash.
+//
 // Supported sources, tried in order:
-//   1. "divechain-json"   — the Divechain Batch JSON standard (see README)
-//   2. "evidence-core"    — commercial_dive_logs repair format; mapping is a
+//   1. "divechain-json"   - the Divechain Batch JSON standard (see README)
+//   2. "evidence-core"    - commercial_dive_logs repair format; mapping is a
 //                           1:1 port of divechain-batch-logger/scripts/gen_batches.py
-//   3. "heuristic-json"   — best-effort field sniffing on any valid JSON;
+//   3. "heuristic-json"   - best-effort field sniffing on any valid JSON;
 //                           rows that cannot be mapped confidently come back
 //                           as invalid so a human completes them in the editor
 
@@ -29,9 +33,13 @@ import {
   BOTTOM_TYPE_LABELS,
   BREATHING_GAS_LABELS,
   DECOMP_TYPE_LABELS,
+  parseTableSchedule,
+  depthToTenths,
+  ymdOfUnix,
+  stringToYmd,
 } from "./contracts";
-import type { DiveInput } from "./types";
-import { ZERO_BYTES32, ZERO_BYTES1 } from "./types";
+import type { DiveDraft } from "./types";
+import { noonUtc, draftTiming } from "./uddf";
 
 // ---------------------------------------------------------------------------
 // Canonical name <-> enum lookups (the public JSON uses names, never numbers)
@@ -59,7 +67,13 @@ function buildLookup(
 }
 
 const LOOKUP_UNITS = buildLookup(UnitSystem, UNIT_SYSTEM_LABELS, { imperial: 0, metric: 1 });
-const LOOKUP_MODE = buildLookup(DiveMode, DIVE_MODE_LABELS, { open_circuit: 1, oc: 1 });
+// v1 aliases stay importable: scuba -> OC recreational, ssa -> surface supplied.
+const LOOKUP_MODE = buildLookup(DiveMode, DIVE_MODE_LABELS, {
+  "scuba|open_circuit|oc": DiveMode.OCRecreational,
+  "ssa|surface_supplied": DiveMode.SurfaceSupplied,
+  "oc-rec|oc-recr": DiveMode.OCRecreational,
+  "oc-tech": DiveMode.OCTechnical,
+});
 const LOOKUP_PURPOSE = buildLookup(DivePurpose, DIVE_PURPOSE_LABELS, { work: 12 });
 const LOOKUP_SUIT = buildLookup(SuitType, SUIT_TYPE_LABELS, { "hot-water": 2, hotwater: 2, hot_water: 2 });
 const LOOKUP_BOTTOM = buildLookup(BottomType, BOTTOM_TYPE_LABELS, { seabed: 5 });
@@ -81,7 +95,7 @@ function enumFromName(lookup: Map<string, number>, raw: unknown, fallback: numbe
   if (hit !== undefined) return { value: hit };
   return {
     value: fallback,
-    warning: warning ?? `Unrecognized value "${String(raw)}" — using ${fallback} for now; fix it before logging`,
+    warning: warning ?? `Unrecognized value "${String(raw)}" - using the fallback for now; fix it before logging`,
   };
 }
 
@@ -92,7 +106,15 @@ function lookupContains(lookup: Map<string, number>, value: number): boolean {
 
 /** Reverse map: enum value -> canonical public name (for export & display). */
 export const CANONICAL_UNITS = ["imperial", "metric"];
-export const CANONICAL_MODE = ["ssa", "scuba"];
+export const CANONICAL_MODE = [
+  "oc-recreational",
+  "oc-technical",
+  "ccr",
+  "scr",
+  "freedive",
+  "surface-supplied",
+  "saturation",
+];
 export const CANONICAL_PURPOSE = [
   "training", "inspection", "repair", "search", "salvage", "recovery",
   "construction", "research", "eod", "security", "photographic", "recreational", "other",
@@ -109,14 +131,10 @@ export const CANONICAL_DECOMP = [
 // Small shared helpers
 // ---------------------------------------------------------------------------
 
-/** Unix epoch seconds for a UTC calendar date at 12:00 — the site convention:
- *  a date-only field stored at noon UTC renders as the same calendar day in
- *  every timezone. */
-export function noonUtc(dateStr: string): number {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr).trim());
-  if (!m) return 0;
-  return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3], 12, 0, 0) / 1000);
-}
+/** Unix epoch seconds for a UTC calendar date at 12:00 - the site convention:
+ *  a date-only record stores noon UTC, which also serves as the default v2
+ *  startTime so the header's date check always holds. */
+export { noonUtc };
 
 /** Unix epoch seconds for a UTC calendar date + "HH:mm[:ss]" clock. */
 function utcClock(dateStr: string, clock: string): number {
@@ -153,29 +171,6 @@ function leadingInt(raw: unknown): number {
   return m ? Math.trunc(parseFloat(m[1])) : NaN;
 }
 
-/** ASCII bytes of a short schedule string, right-padded with NULs to bytes32. */
-export function strToBytes32(s: string): `0x${string}` {
-  let hex = "0x";
-  for (let i = 0; i < 32; i++) {
-    const byte = i < s.length ? s.charCodeAt(i) & 0xff : 0;
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return hex as `0x${string}`;
-}
-
-/** Inverse of strToBytes32: printable ASCII up to the first NUL, else "". */
-export function bytes32ToStr(hex: `0x${string}`): string {
-  if (!hex || hex === ZERO_BYTES32) return "";
-  let out = "";
-  for (let i = 2; i < Math.min(hex.length, 66); i += 2) {
-    const byte = parseInt(hex.slice(i, i + 2), 16);
-    if (byte === 0) break;
-    if (byte < 32 || byte > 126) return "";
-    out += String.fromCharCode(byte);
-  }
-  return out;
-}
-
 // ---------------------------------------------------------------------------
 // Parse result types
 // ---------------------------------------------------------------------------
@@ -187,8 +182,8 @@ export interface ParsedRow {
   key: string;
   /** Index in the uploaded file (1-based, human-facing). */
   sourceIndex: number;
-  /** The exact on-chain payload this row will write. */
-  input: DiveInput;
+  /** The rich record this row will commit (header + UDDF derive from it). */
+  input: DiveDraft;
   /** Non-blocking notes from mapping (shown in the editor, never silently dropped). */
   warnings: string[];
 }
@@ -207,7 +202,7 @@ let rowSeq = 0;
 const nextRowKey = (): string => `r${Date.now().toString(36)}-${rowSeq++}`;
 
 // ---------------------------------------------------------------------------
-// 1. Divechain Batch JSON (the public standard — see README)
+// 1. Divechain Batch JSON (the public standard - see README)
 // ---------------------------------------------------------------------------
 
 export interface StandardDiveJson {
@@ -259,11 +254,11 @@ function mapStandardDive(raw: unknown, index: number): ParsedRow {
   const warnings: string[] = [];
 
   const date = d.date ?? ((d as Record<string, unknown>).diveDate as string | undefined);
-  const diveDate = date ? noonUtc(String(date)) : 0;
+  const diveDate = date ? String(date).slice(0, 10) : "";
 
   const unitsR = enumFromName(LOOKUP_UNITS, d.units, UnitSystem.Imperial);
   if (unitsR.warning) warnings.push(`units: ${unitsR.warning}`);
-  const modeR = enumFromName(LOOKUP_MODE, d.mode, DiveMode.SCUBA);
+  const modeR = enumFromName(LOOKUP_MODE, d.mode, DiveMode.OCRecreational);
   if (modeR.warning) warnings.push(`mode: ${modeR.warning}`);
   const purposeR = enumFromName(LOOKUP_PURPOSE, d.purpose, DivePurpose.Recreational);
   if (purposeR.warning) warnings.push(`purpose: ${purposeR.warning}`);
@@ -299,17 +294,15 @@ function mapStandardDive(raw: unknown, index: number): ParsedRow {
   const bottomR = enumFromName(LOOKUP_BOTTOM, env.bottomType, BottomType.Other);
   if (bottomR.warning) warnings.push(`bottom type: ${bottomR.warning}`);
 
-  const charToBytes1 = (v: unknown): `0x${string}` => {
-    const s = v === undefined || v === null ? "" : String(v).trim();
-    if (!s) return ZERO_BYTES1;
-    const hex = s.charCodeAt(0).toString(16).padStart(2, "0");
-    return (`0x${hex}` as `0x${string}`);
+  const groupOf = (v: unknown): string => {
+    const s = v === undefined || v === null ? "" : String(v).trim().toUpperCase();
+    return /^[A-Z]$/.test(s) ? s : "";
   };
 
   const latDeg = env.latitude !== undefined ? toNum(env.latitude) : 0;
   const lonDeg = env.longitude !== undefined ? toNum(env.longitude) : 0;
 
-  const input: DiveInput = {
+  const input: DiveDraft = {
     diveDate,
     units: unitsR.value,
     data: {
@@ -329,8 +322,8 @@ function mapStandardDive(raw: unknown, index: number): ParsedRow {
       currentKnots: env.currentKnots !== undefined ? toInt(env.currentKnots) : 0,
       bottomType: bottomR.value,
       coords: {
-        latitude: Math.round(latDeg * 1e6),
-        longitude: Math.round(lonDeg * 1e6),
+        latitude: latDeg,
+        longitude: lonDeg,
       },
       location: String(env.location ?? env.site ?? ""),
       weatherConditions: String(env.weather ?? ""),
@@ -341,11 +334,11 @@ function mapStandardDive(raw: unknown, index: number): ParsedRow {
       maxDepthAttained:
         dec.maxDepthAttained !== undefined ? toInt(dec.maxDepthAttained)
           : Number.isFinite(maxDepth) ? maxDepth : 0,
-      tableSchedule: schedule ? strToBytes32(schedule) : ZERO_BYTES32,
-      repetitiveGroup: charToBytes1(dec.repetitiveGroup),
+      tableSchedule: schedule,
+      repetitiveGroup: groupOf(dec.repetitiveGroup),
       surfaceIntervalMinutes:
         d.surfaceIntervalMinutes !== undefined ? toInt(d.surfaceIntervalMinutes) : 0,
-      newRepetitiveGroup: charToBytes1(dec.newRepetitiveGroup),
+      newRepetitiveGroup: groupOf(dec.newRepetitiveGroup),
     },
     gas: {
       gasType: gasR.value,
@@ -364,7 +357,7 @@ function mapStandardDive(raw: unknown, index: number): ParsedRow {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Evidence-core (commercial_dive_logs) — faithful port of gen_batches.py
+// 2. Evidence-core (commercial_dive_logs) - faithful port of gen_batches.py
 // ---------------------------------------------------------------------------
 
 interface EvidenceDive {
@@ -403,6 +396,16 @@ function evidenceDecompType(schedule: string): number {
   return DecompressionType.Standard;
 }
 
+/** Evidence-core logs are US commercial dives on US Navy air tables: the v2
+ *  header stores the tokenized schedule ("USN 60/40"), capped at 16 chars.
+ *  UNLIMITED means the table was used with no deco schedule: token only. */
+function evidenceTableSchedule(schedule: string): string {
+  const s = String(schedule ?? "").trim();
+  if (!s) return "";
+  if (s.toUpperCase().includes("UNLIMITED")) return "USN";
+  return (`USN ${s}`).slice(0, 16);
+}
+
 function mapEvidenceDive(d: EvidenceDive, index: number, prev: { date: string; rs: number } | null): ParsedRow {
   const warnings: string[] = [];
   const times = d.dive_times ?? {};
@@ -425,7 +428,7 @@ function mapEvidenceDive(d: EvidenceDive, index: number, prev: { date: string; r
   const decompTotal = Number.isFinite(tt) && Number.isFinite(bt) ? Math.max(0, tt - bt) : 0;
 
   if (depRaw !== undefined && Number.isFinite(dep) && /m\b|m$|msw/i.test(String(depRaw))) {
-    warnings.push('Depth string looks metric ("m"/"msw") but the evidence mapping is Imperial — verify before logging');
+    warnings.push('Depth string looks metric ("m"/"msw") but the evidence mapping is Imperial - verify before logging');
   }
 
   const remarks = [
@@ -436,8 +439,8 @@ function mapEvidenceDive(d: EvidenceDive, index: number, prev: { date: string; r
     String(d.operations?.remarks ?? ""),
   ].join(" | ").trim();
 
-  const input: DiveInput = {
-    diveDate: noonUtc(d.date),
+  const input: DiveDraft = {
+    diveDate: String(d.date).slice(0, 10),
     units: UnitSystem.Imperial,
     data: {
       leaveSurfaceTime: ls,
@@ -446,7 +449,7 @@ function mapEvidenceDive(d: EvidenceDive, index: number, prev: { date: string; r
       bottomTimeMinutes: bt,
       maxDepth: dep,
       averageDepth: dep,
-      mode: DiveMode.SSA,
+      mode: DiveMode.SurfaceSupplied,
       purpose: evidencePurpose(objective),
       suit: SuitType.Dry,
     },
@@ -463,10 +466,10 @@ function mapEvidenceDive(d: EvidenceDive, index: number, prev: { date: string; r
       decompType: evidenceDecompType(schedule),
       totalDecompTimeMinutes: decompTotal,
       maxDepthAttained: dep,
-      tableSchedule: schedule ? strToBytes32(schedule) : ZERO_BYTES32,
-      repetitiveGroup: ZERO_BYTES1,
+      tableSchedule: evidenceTableSchedule(schedule),
+      repetitiveGroup: "",
       surfaceIntervalMinutes: si,
-      newRepetitiveGroup: ZERO_BYTES1,
+      newRepetitiveGroup: "",
     },
     gas: {
       gasType: BreathingGas.Air,
@@ -545,7 +548,7 @@ function findDiveArray(doc: unknown): { arr: unknown[]; path: string } | null {
 function mapHeuristicDoc(doc: unknown): { rows: ParsedRow[]; notes: string[] } {
   const found = findDiveArray(doc);
   if (!found) throw new ImportError("Could not find an array of dive-like records in this JSON.");
-  const notes = [`Best-effort mapping of "${found.path}" (${found.arr.length} records) — review every row before logging.`];
+  const notes = [`Best-effort mapping of "${found.path}" (${found.arr.length} records) - review every row before logging.`];
 
   // Whole-file units inference from depth strings like "57 ft" / "18 m".
   let sawFt = false;
@@ -558,7 +561,7 @@ function mapHeuristicDoc(doc: unknown): { rows: ParsedRow[]; notes: string[] } {
     }
   }
   const units = sawFt && !sawM ? UnitSystem.Imperial : UnitSystem.Metric;
-  if (!sawFt && !sawM) notes.push("No units found in depth values — assumed Metric. Change per dive if needed.");
+  if (!sawFt && !sawM) notes.push("No units found in depth values - assumed Metric. Change per dive if needed.");
 
   const rows: ParsedRow[] = [];
   for (let i = 0; i < found.arr.length; i++) {
@@ -567,8 +570,8 @@ function mapHeuristicDoc(doc: unknown): { rows: ParsedRow[]; notes: string[] } {
 
     const dateRaw = pick(item, DATE_KEYS);
     const dateStr = dateRaw !== undefined ? String(dateRaw) : "";
-    const diveDate = dateStr ? noonUtc(dateStr) : 0;
-    if (!diveDate) warnings.push('Missing or unparseable date ("YYYY-MM-DD")');
+    const diveDate = dateStr ? dateStr.slice(0, 10) : "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(diveDate)) warnings.push('Missing or unparseable date ("YYYY-MM-DD")');
 
     // Times may sit at the top level or nested under a times/dive_times object.
     const timesRaw = pick(item, TIMES_KEYS) as Record<string, unknown> | undefined;
@@ -586,7 +589,7 @@ function mapHeuristicDoc(doc: unknown): { rows: ParsedRow[]; notes: string[] } {
       warnings.push("Missing max depth");
     } else if (typeof depthRaw === "string" && /m\b|msw/i.test(depthRaw) && units === UnitSystem.Imperial) {
       maxDepth = leadingInt(depthRaw);
-      warnings.push('Depth says meters but the file looks Imperial — fix the number or the units');
+      warnings.push('Depth says meters but the file looks Imperial - fix the number or the units');
     } else {
       maxDepth = typeof depthRaw === "string" ? leadingInt(depthRaw) : toInt(depthRaw);
     }
@@ -603,7 +606,7 @@ function mapHeuristicDoc(doc: unknown): { rows: ParsedRow[]; notes: string[] } {
     const leaveBottomTime = clockOf(LB_KEYS);
     const reachSurfaceTime = clockOf(RS_KEYS);
 
-    const input: DiveInput = {
+    const input: DiveDraft = {
       diveDate,
       units,
       data: {
@@ -613,7 +616,7 @@ function mapHeuristicDoc(doc: unknown): { rows: ParsedRow[]; notes: string[] } {
         bottomTimeMinutes,
         maxDepth,
         averageDepth: Number.isFinite(maxDepth) ? maxDepth : 0,
-        mode: DiveMode.SCUBA,
+        mode: DiveMode.OCRecreational,
         purpose: DivePurpose.Recreational,
         suit: SuitType.Wet,
       },
@@ -630,10 +633,10 @@ function mapHeuristicDoc(doc: unknown): { rows: ParsedRow[]; notes: string[] } {
         decompType: DecompressionType.NoneDecomp,
         totalDecompTimeMinutes: 0,
         maxDepthAttained: Number.isFinite(maxDepth) ? maxDepth : 0,
-        tableSchedule: ZERO_BYTES32,
-        repetitiveGroup: ZERO_BYTES1,
+        tableSchedule: "",
+        repetitiveGroup: "",
         surfaceIntervalMinutes: 0,
-        newRepetitiveGroup: ZERO_BYTES1,
+        newRepetitiveGroup: "",
       },
       gas: {
         gasType: BreathingGas.Air,
@@ -708,7 +711,7 @@ export function parseDiveFile(text: string): ParseResult {
       format: "evidence-core",
       formatLabel: "Commercial logbook (evidence core)",
       rows: mapEvidenceDoc(doc as Record<string, unknown>),
-      notes: ["Times interpreted as UTC, Imperial units, dry suit, SSA — the established evidence mapping. Edit any dive to adjust."],
+      notes: ["Times interpreted as UTC, Imperial units, dry suit, surface supplied - the established evidence mapping. Edit any dive to adjust."],
     };
   }
 
@@ -730,91 +733,107 @@ export function parseDiveFile(text: string): ParseResult {
 }
 
 // ---------------------------------------------------------------------------
-// Validation — mirror the contract's own guards (PAPER-IX)
+// Validation - mirror the contract's own guards (PAPER-IX)
 // ---------------------------------------------------------------------------
 
 const UINT32_MAX = 4294967295;
-const INT32_MIN = -2147483648;
-const INT32_MAX = 2147483647;
 
 /** Blockers: reasons the contract would revert or the ABI cannot encode.
- *  An empty array means the row can be logged. */
-export function validateDiveInput(input: DiveInput): string[] {
+ *  An empty array means the row can be logged. Mirrors
+ *  SovereignDiveLog._validate for every rule the client can see. */
+export function validateDiveDraft(draft: DiveDraft): string[] {
   const issues: string[] = [];
-  const d = input.data;
+  const d = draft.data;
+
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(draft.diveDate)) {
+    issues.push("Dive date is missing or not a valid YYYY-MM-DD calendar date");
+  } else {
+    const [y] = draft.diveDate.split("-").map(Number);
+    if (y < 1970) issues.push("Dive dates before 1970 cannot be logged (the header encodes YYYYMMDD from 1970)");
+    const today = new Date();
+    const todayYmd = today.getUTCFullYear() * 10000 + (today.getUTCMonth() + 1) * 100 + today.getUTCDate();
+    const ymd = y * 10000 + Number(draft.diveDate.slice(5, 7)) * 100 + Number(draft.diveDate.slice(8, 10));
+    if (ymd > todayYmd) issues.push("Dive date is in the future - you cannot log a dive that has not happened");
+  }
 
   if (!Number.isFinite(d.maxDepth) || d.maxDepth <= 0) issues.push("Max depth must be a positive number");
-  else if (d.maxDepth > UINT32_MAX) issues.push("Max depth is out of range");
-  else if (d.maxDepth > 1000) issues.push(`Max depth ${d.maxDepth} is beyond any recorded dive — fix the units or the number`);
+  else if (depthToTenths(d.maxDepth) > UINT32_MAX) issues.push("Max depth is out of range");
+  else if (d.maxDepth > 1000) issues.push(`Max depth ${d.maxDepth} is beyond any recorded dive - fix the units or the number`);
 
   if (!Number.isFinite(d.bottomTimeMinutes) || d.bottomTimeMinutes <= 0)
     issues.push("Bottom time must be a positive number of minutes");
-  else if (d.bottomTimeMinutes > UINT32_MAX) issues.push("Bottom time is out of range");
-  else if (d.bottomTimeMinutes > 1440) issues.push(`Bottom time ${d.bottomTimeMinutes} min exceeds 24 h — verify before logging`);
+  else if (d.bottomTimeMinutes > 1440) issues.push(`Bottom time ${d.bottomTimeMinutes} min exceeds 24 h - verify before logging`);
 
-  if (!input.diveDate) issues.push("Dive date is missing");
-  else if (input.diveDate > noonUtcTodayPlusOne()) issues.push("Dive date is in the future — you cannot log a dive that has not happened");
+  if (d.leaveSurfaceTime > 0 && d.reachSurfaceTime > 0 && d.reachSurfaceTime <= d.leaveSurfaceTime)
+    issues.push("Reached-surface time must be after the leave-surface time");
+  if (d.leaveBottomTime > 0 && d.leaveSurfaceTime > 0 && d.leaveBottomTime < d.leaveSurfaceTime)
+    issues.push("Leave-bottom time must be after the leave-surface time");
 
-  for (const [name, v] of [
-    ["leave surface time", d.leaveSurfaceTime],
-    ["leave bottom time", d.leaveBottomTime],
-    ["reach surface time", d.reachSurfaceTime],
-  ] as const) {
-    if (v < 0 || v > Number.MAX_SAFE_INTEGER) issues.push(`${name} is out of range`);
+  const gasTotal = draft.gas.o2Percent + draft.gas.hePercent;
+  if (gasTotal > 100) issues.push(`Gas mix sums to ${gasTotal}% - O2 + He must not exceed 100%`);
+
+  const schedule = String(draft.decomp.tableSchedule ?? "").trim();
+  if (schedule) {
+    if (!parseTableSchedule(schedule)) {
+      issues.push(`Table schedule "${schedule}" is not "<TOKEN>[ <schedule>]" with a known token (USN, PADI, NAUI, BSAC, BUEHL, DCIEM, CSMD, COMEX, OTHER)`);
+    } else if (schedule.length > 16) {
+      issues.push("Table schedule is longer than 16 characters (the bytes16 header field)");
+    }
   }
-  for (const [name, v] of [
-    ["average depth", d.averageDepth],
-    ["total deco time", input.decomp.totalDecompTimeMinutes],
-    ["surface interval", input.decomp.surfaceIntervalMinutes],
-    ["cylinder pressure in", input.gas.cylinderPressureIn],
-    ["cylinder pressure out", input.gas.cylinderPressureOut],
-    ["gas consumed", input.gas.gasConsumed],
-    ["bailout pressure", input.gas.bailoutPressure],
-  ] as const) {
-    if (v < 0 || v > UINT32_MAX) issues.push(`${name} is out of range`);
-  }
-  if (d.averageDepth > d.maxDepth && d.averageDepth > 0 && Number.isFinite(d.maxDepth))
-    issues.push("Average depth is greater than max depth");
-  for (const [name, v] of [["air temp", input.env.airTemp], ["water temp", input.env.waterTemp]] as const) {
-    if (v < INT32_MIN || v > INT32_MAX) issues.push(`${name} is out of range`);
-  }
-  if (input.env.currentKnots < -32768 || input.env.currentKnots > 32767)
-    issues.push("Current is out of range");
-  const gasTotal = input.gas.o2Percent + input.gas.hePercent + input.gas.n2Percent;
-  if (gasTotal > 100) issues.push(`Gas mix sums to ${gasTotal}% — fractions must not exceed 100%`);
+  const rg = String(draft.decomp.repetitiveGroup ?? "").trim().toUpperCase();
+  const rgAfter = String(draft.decomp.newRepetitiveGroup ?? "").trim().toUpperCase();
+  if (rg && !/^[A-Z]$/.test(rg)) issues.push("Repetitive group must be a single letter A-Z");
+  if (rgAfter && !/^[A-Z]$/.test(rgAfter)) issues.push("Post-interval repetitive group must be a single letter A-Z");
+  if ((rg || rgAfter) && !schedule) issues.push("A repetitive group letter requires a table schedule (the letters are table-family-specific)");
+  if (rgAfter && !(draft.decomp.surfaceIntervalMinutes > 0))
+    issues.push("The post-interval repetitive group requires a recorded surface interval");
 
   return issues;
-}
-
-function noonUtcTodayPlusOne(): number {
-  const now = new Date();
-  return Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 12, 0, 0) / 1000);
 }
 
 // ---------------------------------------------------------------------------
 // Dedup against what is already on chain + within the file itself
 // ---------------------------------------------------------------------------
 
-/** Match key: UTC day | units | bottom time | max depth. Units-aware so
- *  57 ft never collides with 57 m. Voided dives still count — re-logging a
- *  voided record would create a duplicate (corrections get new keys). */
-export function dedupKeyOf(input: DiveInput): string {
-  const day = Math.floor(input.diveDate / 86400);
-  return `${day}|${input.units}|${input.data.bottomTimeMinutes}|${input.data.maxDepth}`;
+/** Match key: UTC day | units | bottom time (s) | max depth (tenths).
+ *  Units-aware so 57 ft never collides with 57 m. Voided dives still count -
+ *  re-logging a voided record would create a duplicate (corrections get new
+ *  keys). Uses the same derivation the header will carry. */
+export function dedupKeyOfDraft(draft: DiveDraft): string {
+  const { diveDate, bottomTimeSeconds, maxDepth } = dedupFieldsOfDraft(draft);
+  return `${diveDate}|${draft.units}|${bottomTimeSeconds}|${maxDepth}`;
+}
+
+/** Header fields used for dedup, derived identically to draftToHeader. */
+export function dedupFieldsOfDraft(draft: DiveDraft): {
+  diveDate: number;
+  bottomTimeSeconds: number;
+  maxDepth: number;
+} {
+  const timing = draftTiming(draft);
+  const ymd =
+    Number(draft.data.leaveSurfaceTime) > 0
+      ? ymdOfUnix(Number(draft.data.leaveSurfaceTime))
+      : stringToYmd(draft.diveDate);
+  return {
+    diveDate: ymd,
+    bottomTimeSeconds: timing.bottomTimeSeconds || timing.durationSeconds,
+    maxDepth: depthToTenths(Number(draft.data.maxDepth) || 0),
+  };
 }
 
 export interface ChainDiveKey {
   id: bigint | number;
-  diveDate: number;
+  diveDate: number; // uint32 YYYYMMDD
   units: number;
-  bottomTimeMinutes: number;
-  maxDepth: number;
+  bottomTimeSeconds: number;
+  maxDepth: number; // tenths
 }
 
 export function buildChainIndex(dives: ChainDiveKey[]): Map<string, bigint> {
   const index = new Map<string, bigint>();
   for (const d of dives) {
-    const key = `${Math.floor(d.diveDate / 86400)}|${d.units}|${d.bottomTimeMinutes}|${d.maxDepth}`;
+    const key = `${d.diveDate}|${d.units}|${d.bottomTimeSeconds || 0}|${d.maxDepth}`;
     if (!index.has(key)) index.set(key, BigInt(d.id));
   }
   return index;
@@ -839,8 +858,8 @@ export interface AnalyzedRow extends ParsedRow {
 export function analyzeRows(rows: ParsedRow[], chainIndex: Map<string, bigint>): AnalyzedRow[] {
   const seenInFile = new Set<string>();
   return rows.map((row) => {
-    const key = dedupKeyOf(row.input);
-    const issues = validateDiveInput(row.input);
+    const key = dedupKeyOfDraft(row.input);
+    const issues = validateDiveDraft(row.input);
     const matchedDiveId = chainIndex.get(key);
     if (matchedDiveId !== undefined) {
       return { ...row, status: "on-chain", matchedDiveId, issues };
@@ -856,9 +875,9 @@ export function analyzeRows(rows: ParsedRow[], chainIndex: Map<string, bigint>):
   });
 }
 
-/** Measured 2026-10-28 on Fuji simulation: ~450–650k gas per dive, so 8 dives
- *  per transaction (~3.6M gas) stays safely under the block gas ceiling. The
- *  contract cap is 100 (SPEC-6) — we never approach it. */
+/** v2 headers measure ~154k gas each on the reference suite. 8 dives per
+ *  transaction (~1.25M gas) keeps signings reviewable and far under both the
+ *  block ceiling and the contract's MAX_BATCH_SIZE of 100 (SPEC-6). */
 export const DIVES_PER_TX = 8;
 
 export function chunkInputs<T>(items: T[], size: number = DIVES_PER_TX): T[][] {

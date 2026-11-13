@@ -6,10 +6,11 @@ rulings. Never change a door without the owner.
 
 ## One-way door: deployed contract addresses
 
-The DiveLogFactory is live and byte-verified on Avalanche C-Chain (43114,
-0x3894070DDdA804f9ba96116c9bd810eF745f5999) and Fuji (43113,
-0x921dc74BA049748BdFeE471F641f48688aDF8b49), and divers' SovereignDiveLog
-contracts are behind it. Changing a deployed address, chain id, or redeploying
+The v2 DiveLogFactory is live and byte-verified on Avalanche C-Chain (43114,
+0x36eB0768Ba245A4D002F35E3a17D3210c9C6BB83) and Fuji (43113,
+0x2ec5e579E0B3e31C4c3e6ABE1F7c0eF7ACa4E740), deployed 2026-11-13 per the
+DIV-D-3 ruling (the v1 factories at 0x3894…5999 / 0x921d…8b49 stay live for
+their existing v1 books). Changing a deployed address, chain id, or redeploying
 the factory strands every existing logbook mapping. Contract-level changes
 ship as a new reference implementation and a coordinated factory v2 with
 migration via adoptLogbook - never a silent swap of addresses in the frontend

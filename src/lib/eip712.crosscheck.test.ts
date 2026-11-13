@@ -7,6 +7,7 @@ const fx = fixture as {
   chainId: string;
   verifyingContract: `0x${string}`;
   diveId: string;
+  contentHash: `0x${string}`;
   nonce: string;
   digest: `0x${string}`;
   attester: `0x${string}`;
@@ -26,6 +27,7 @@ describe("EIP-712 TS <-> Solidity cross-check", () => {
     Number(fx.chainId),
     fx.verifyingContract,
     BigInt(fx.diveId),
+    fx.contentHash,
     BigInt(fx.nonce),
   );
 

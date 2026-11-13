@@ -16,9 +16,11 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import DiveForm from "../components/DiveForm";
 import FlagChip from "../components/FlagChip";
 import {
-  diveFormToInput,
-  diveInputToForm,
+  diveFormToDraft,
+  draftToDiveForm,
+  prepareDiveInput,
   type DiveFormState,
+  type PreparedDive,
 } from "../lib/diveForm";
 import {
   DIVE_PURPOSE_LABELS,
@@ -26,6 +28,7 @@ import {
   UnitSystem,
   SOVEREIGN_DIVE_LOG_ABI,
 } from "../lib/contracts";
+import { saveProfile } from "../lib/profileVault";
 import {
   parseDiveFile,
   analyzeRows,
@@ -47,7 +50,7 @@ const EXAMPLE_BATCH_JSON = [
   {
     date: "2026-07-04",
     units: "imperial",
-    mode: "scuba",
+    mode: "oc-recreational",
     purpose: "recreational",
     suit: "wet",
     maxDepth: 58,
@@ -78,10 +81,12 @@ interface ImportDraft {
 
 type Filter = "all" | "new" | "problems" | "skipped";
 
-const dayLabel = (unix: number): string =>
-  new Date(unix * 1000).toLocaleDateString("en-US", {
+const dayLabel = (day: string): string => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return day || "-";
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
   });
+};
 
 const fmtGas = (gas: bigint): string => `${(Number(gas) / 1e6).toFixed(2)}M`;
 const fmtAvax = (wei: bigint): string => {
@@ -133,8 +138,8 @@ export default function ImportDives() {
           id: d.id,
           diveDate: Number(d.diveDate),
           units: Number(d.units),
-          bottomTimeMinutes: Number(d.data.bottomTimeMinutes),
-          maxDepth: Number(d.data.maxDepth),
+          bottomTimeSeconds: Number(d.bottomTimeSeconds) || Number(d.durationSeconds),
+          maxDepth: Number(d.maxDepth),
         })),
       ),
     [dives],
@@ -151,12 +156,41 @@ export default function ImportDives() {
     return c;
   }, [analyzed]);
 
-  const readyInputs = useMemo(
+  const readyDrafts = useMemo(
     () => analyzed.filter((r) => r.status === "new").map((r) => r.input),
     [analyzed],
   );
 
-  const chunks = useMemo(() => chunkInputs(readyInputs), [readyInputs]);
+  // Derive the v2 payloads (deterministic UDDF -> SHA-256 contentHash -> thin
+  // header) for every ready row. Pure and cheap; recomputed when rows change.
+  const rowsVersion = useMemo(
+    () => readyDrafts.map((r) => `${r.diveDate}|${r.data.maxDepth}|${r.data.bottomTimeMinutes}`).join(";"),
+    [readyDrafts],
+  );
+  const [prepared, setPrepared] = useState<PreparedDive[]>([]);
+  const [preparedFor, setPreparedFor] = useState("");
+  if (preparedFor !== rowsVersion) {
+    // Rows changed: reset the derived payloads during render (the React
+    // "adjust state when a prop changes" pattern), then recompute in the
+    // effect below.
+    setPreparedFor(rowsVersion);
+    setPrepared([]);
+  }
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all(readyDrafts.map(prepareDiveInput)).then((list) => {
+      if (!cancelled) setPrepared(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowsVersion]);
+
+  const chunks = useMemo(
+    () => chunkInputs(prepared.map((p) => p.input)),
+    [prepared],
+  );
   const chunkVersion = useMemo(
     () => JSON.stringify(chunks.map((c) => c.length)) + chunks.length,
     [chunks],
@@ -248,7 +282,7 @@ export default function ImportDives() {
     setDraft({
       ...draft,
       rows: draft.rows.map((r) =>
-        r.key === editing.key ? { ...r, input: diveFormToInput(editing.form), warnings: [] } : r,
+        r.key === editing.key ? { ...r, input: diveFormToDraft(editing.form), warnings: [] } : r,
       ),
     });
     setEditing(null);
@@ -434,7 +468,7 @@ export default function ImportDives() {
               <RowCard
                 key={row.key}
                 row={row}
-                onEdit={() => setEditing({ key: row.key, form: diveInputToForm(row.input) })}
+                onEdit={() => setEditing({ key: row.key, form: draftToDiveForm(row.input) })}
                 onRemove={() => removeRow(row.key)}
               />
             ))}
@@ -453,7 +487,7 @@ export default function ImportDives() {
               {" "}· chain {chainId ?? "?"}
               {" "}· owner {owner ? `${owner.slice(0, 8)}…${owner.slice(-6)}` : "loading…"}
               {" "}· {isOwner ? "owner-verified" : "NOT-OWNER"}
-              {" "}· {readyInputs.length} ready / {draft.rows.length} rows
+              {" "}· {readyDrafts.length} ready / {draft.rows.length} rows
             </p>
             {!running && lastError && (
               <p className="text-xs text-danger flex items-start gap-1.5">
@@ -474,7 +508,7 @@ export default function ImportDives() {
             )}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-text-secondary">
-                <span className="text-white font-semibold tabular-nums">{readyInputs.length}</span> dives ready ·{" "}
+                <span className="text-white font-semibold tabular-nums">{readyDrafts.length}</span> dives ready ·{" "}
                 <span className="text-white font-semibold tabular-nums">{chunks.length}</span> transaction{chunks.length === 1 ? "" : "s"}
                 {" "}({DIVES_PER_TX} per tx)
                 {gasPrice !== null && totalGas > 0n && (
@@ -488,7 +522,7 @@ export default function ImportDives() {
               </div>
               <button
                 type="button"
-                disabled={readyInputs.length === 0 || !isOwner || running || allConfirmed}
+                disabled={readyDrafts.length === 0 || !isOwner || running || allConfirmed}
                 onClick={() => setConfirmOpen(true)}
                 className="btn-primary text-sm"
               >
@@ -578,7 +612,16 @@ export default function ImportDives() {
               <button type="button" onClick={() => setConfirmOpen(false)} className="btn-ghost flex-1 text-sm">Not yet</button>
               <button
                 type="button"
-                onClick={() => { setConfirmOpen(false); send(chunks); }}
+                onClick={() => {
+                  // Persist each profile locally before anything goes on-chain:
+                  // the header commits to its UDDF hash, so the bytes must be
+                  // in the vault from the moment the dive exists.
+                  for (const p of prepared) {
+                    saveProfile(p.input.contentHash, { uddf: p.uddf, draft: p.draft });
+                  }
+                  setConfirmOpen(false);
+                  send(chunks);
+                }}
                 className="btn-primary flex-1 text-sm"
               >
                 Start signing
@@ -635,8 +678,7 @@ function RowCard({ row, onEdit, onRemove }: { row: AnalyzedRow; onEdit: () => vo
             {Boolean(d.env.location) && (
               <span className="text-text-tertiary truncate max-w-[240px]">{d.env.location}</span>
             )}
-          </div>
-          {row.status === "invalid" && (
+          </div>          {row.status === "invalid" && (
             <ul className="mt-2 space-y-0.5">
               {row.issues.map((issue) => (
                 <li key={issue} className="text-[11px] text-danger flex items-start gap-1">

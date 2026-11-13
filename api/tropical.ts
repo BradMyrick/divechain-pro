@@ -49,24 +49,22 @@ async function fetchOutlook(): Promise<OutlookItem[]> {
   }));
 }
 
-export default async function handler(): Promise<Response> {
-  const headers = {
-    "Cache-Control": `public, max-age=0, s-maxage=${FETCH_TTL_MS / 1000}, stale-while-revalidate=3600`,
-  };
+const SUCCESS_HEADERS = {
+  "Cache-Control": "s-maxage=600, stale-while-revalidate=3600",
+};
 
+export async function GET(request: Request): Promise<Response> {
+  void request;
   if (cache && cache.expires > Date.now()) {
-    return Response.json(cache.body, { headers });
+    return Response.json(cache.body, { headers: SUCCESS_HEADERS });
   }
 
   try {
     const items = await fetchOutlook();
     const body = { updatedAt: Date.now(), source: "NOAA NHC", items };
     cache = { expires: Date.now() + FETCH_TTL_MS, body };
-    return Response.json(body, { headers });
+    return Response.json(body, { headers: SUCCESS_HEADERS });
   } catch {
-    return Response.json(
-      { updatedAt: Date.now(), source: "NOAA NHC", items: [], available: false },
-      { headers },
-    );
+    return Response.json({ error: "upstream_unavailable" }, { status: 502 });
   }
 }

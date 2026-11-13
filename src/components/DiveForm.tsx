@@ -20,9 +20,10 @@ import { MapPin, Compass } from "lucide-react";
 
 /**
  * Controlled dive-entry form shared by /log-dive and the batch import editor.
- * The parent owns the state (DiveFormState) and derives the on-chain DiveInput
- * with diveFormToInput() from src/lib/diveForm.ts, so both surfaces encode
- * identically (noon-UTC dive dates, computed n2 % and gas consumed).
+ * The parent owns the state (DiveFormState) and derives the rich DiveDraft
+ * with diveFormToDraft() from src/lib/diveForm.ts, so both surfaces encode
+ * identically. The v2 on-chain header (and the UDDF content hash) derive from
+ * the draft via prepareDiveInput().
  */
 export default function DiveForm({
   value,
@@ -190,7 +191,7 @@ export default function DiveForm({
               <input type="number" value={totalDecompTime} onChange={(e) => set("totalDecompTime", Number(e.target.value))} />
             </Field>
             <Field label="Table schedule">
-              <input type="text" value={tableSchedule} onChange={(e) => set("tableSchedule", e.target.value)} placeholder="e.g. 60/120" />
+              <input type="text" value={tableSchedule} onChange={(e) => set("tableSchedule", e.target.value)} placeholder="e.g. USN 60/40" />
             </Field>
           </div>
         )}

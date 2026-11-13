@@ -3,11 +3,11 @@ import { isCommercialDive } from "../lib/diverStats";
 
 interface FlagChipProps {
   mode: number;
-  purpose: number;
+  purpose?: number;
   className?: string;
 }
 
-/** Semantic flag badge: Alpha for commercial/SSA dives, Diver Down for recreational. */
+/** Semantic flag badge: Alpha for commercial/surface-supplied dives, Diver Down for recreational. */
 export default function FlagChip({ mode, purpose, className = "" }: FlagChipProps) {
   const commercial = isCommercialDive(mode, purpose);
   return (

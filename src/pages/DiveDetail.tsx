@@ -3,12 +3,12 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useDiveContract } from "../contexts/DiveContractContext";
 import { useDiveLog } from "../hooks/useDiveLog";
+import { normalizeDive } from "../hooks/useLogbook";
 import {
   DIVE_MODE_LABELS,
   DIVE_PURPOSE_LABELS,
   SUIT_TYPE_LABELS,
   BOTTOM_TYPE_LABELS,
-  BREATHING_GAS_LABELS,
   DECOMP_TYPE_LABELS,
   UNIT_SYSTEM_LABELS,
   pressureUnit,
@@ -19,10 +19,17 @@ import {
   DivePurpose,
   SuitType,
   BottomType,
-  BreathingGas,
   DecompressionType,
+  tenthsToDepth,
+  ymdToString,
+  bytes16ToStr,
+  bytes1ToChar,
+  bytes4ToGeohash,
+  gasMixLabel,
+  bpsToPercent,
 } from "../lib/contracts";
-import type { Attestation } from "../lib/types";
+import type { DiveDraft, Attestation } from "../lib/types";
+import { getProfile } from "../lib/profileVault";
 import { buildAttestationRequestParams } from "../lib/attestations";
 import DiveProfileSketch from "../components/DiveProfileSketch";
 import QRCode from "../components/QRCode";
@@ -30,7 +37,7 @@ import FlagChip from "../components/FlagChip";
 import {
   ArrowLeft, Loader2, MapPin, Clock, Calendar, Thermometer, Eye, Wind, Droplets,
   ShieldCheck, AlertTriangle, Waves, Activity, Navigation, Copy, Check,
-  Link2, Cylinder, QrCode,
+  Link2, Cylinder, QrCode, Lock, FileCheck2,
 } from "lucide-react";
 
 const EXPLORERS: Record<number, string> = {
@@ -55,7 +62,7 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
   const diveId = propDiveId ?? (id ? BigInt(id) : 0n);
   const { data: dive } = useDive(diveId);
   const { data: voidInfo } = useVoidInfo(diveId);
-  const { data: attestations } = useAttestations(diveId);
+  const { attestations } = useAttestations(diveId);
 
   const [showVoidForm, setShowVoidForm] = useState(false);
   const [voidReason, setVoidReason] = useState("");
@@ -64,19 +71,18 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
 
   const parsed = useMemo(() => {
     if (!dive) return null;
-    const d = dive as Record<string, unknown>;
-    const data = d.data as Record<string, unknown>;
-    const env = d.env as Record<string, unknown>;
-    const decomp = d.decomp as Record<string, unknown>;
-    const gas = d.gas as Record<string, unknown>;
-    const coords = env?.coords as { latitude: number; longitude: number } | undefined;
-    const units = Number(d.units) as UnitSystem;
+    const h = normalizeDive(dive);
+    const stored = getProfile(h.contentHash);
+    const draft: DiveDraft | undefined = stored?.draft;
     return {
-      d, data, env, decomp, gas, coords, units,
+      h,
+      draft,
+      profileURI: h.profileURI,
       isVoided: voidInfo ? (voidInfo as Record<string, unknown>).isVoided as boolean : false,
-      maxDepth: Number(data?.maxDepth ?? 0),
-      avgDepth: Number(data?.averageDepth ?? 0),
-      bottomTime: Number(data?.bottomTimeMinutes ?? 0),
+      units: Number(h.units) as UnitSystem,
+      maxDepth: tenthsToDepth(Number(h.maxDepth)),
+      btSec: Number(h.bottomTimeSeconds),
+      durationSec: Number(h.durationSeconds),
     };
   }, [dive, voidInfo]);
 
@@ -92,25 +98,33 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
     );
   }
 
-  const { d, data, env, decomp, gas, coords, units, isVoided, maxDepth, avgDepth, bottomTime } = parsed;
+  const { h, draft, profileURI, isVoided, units, maxDepth, btSec, durationSec } = parsed;
   const dU = depthUnit(units), tU = tempUnit(units), pU = pressureUnit(units);
   const explorer = chain ? EXPLORERS[chain.id] ?? "" : "";
 
-  const fmtDate = (ts: bigint) =>
-    new Date(Number(ts) * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const day = ymdToString(Number(h.diveDate));
+  const fmtDay = () =>
+    day
+      ? new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : "-";
+  const startTime = Number(h.startTime) > 0
+    ? new Date(Number(h.startTime) * 1000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+    : "";
+  const bottomMin = btSec > 0 ? Math.round(btSec / 60) : Math.round(durationSec / 60);
+  const durationMin = Math.round(durationSec / 60);
+  const schedule = bytes16ToStr(h.tableSchedule);
+  const rg = bytes1ToChar(h.repetitiveGroup);
+  const rgAfter = bytes1ToChar(h.repetitiveGroupAfterSI);
+  const geohash = bytes4ToGeohash(h.coarseGeohash);
+  const siMin = Number(h.surfaceIntervalSeconds) > 0 ? Math.round(Number(h.surfaceIntervalSeconds) / 60) : 0;
+  const gasDisplay = gasMixLabel(Number(h.o2Bps), Number(h.heBps));
 
   const handleVoid = () => { voidDive(diveId, BigInt(supersededBy), voidReason); setShowVoidForm(false); };
 
-  const gasLabel = BREATHING_GAS_LABELS[Number(gas?.gasType) as BreathingGas] ?? "Air";
-  const o2Pct = Number(gas?.o2Percent ?? 21);
-  const hePct = Number(gas?.hePercent ?? 0);
-  const gasDisplay = gasLabel === "Nitrox" ? `Nitrox ${o2Pct}%` : gasLabel === "Trimix" ? `TMX ${o2Pct}/${hePct}` : gasLabel;
-
+  const coords = draft?.env.coords;
   const hasCoords = !!coords && (coords.latitude !== 0 || coords.longitude !== 0);
-  const latDeg = coords ? (coords.latitude / 1e6) : 0;
-  const lonDeg = coords ? (coords.longitude / 1e6) : 0;
-  const mapsUrl = hasCoords ? `https://www.google.com/maps?q=${latDeg},${lonDeg}` : "";
-  const coordsStr = hasCoords ? `${latDeg.toFixed(4)}°, ${lonDeg.toFixed(4)}°` : "";
+  const mapsUrl = hasCoords ? `https://www.google.com/maps?q=${coords!.latitude},${coords!.longitude}` : "";
+  const coordsStr = hasCoords ? `${coords!.latitude.toFixed(4)}°, ${coords!.longitude.toFixed(4)}°` : "";
 
   const attList = (attestations as Attestation[] | undefined) ?? [];
 
@@ -143,24 +157,28 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-white">Dive #{diveId.toString()}</h2>
-                {Boolean(env?.location) && (
+                {draft?.env.location ? (
                   <p className="text-sm text-foam flex items-center gap-1.5 mt-1">
-                    <MapPin className="w-4 h-4" /> {String(env.location)}
+                    <MapPin className="w-4 h-4" /> {draft.env.location}
                   </p>
-                )}
+                ) : geohash ? (
+                  <p className="text-sm text-foam flex items-center gap-1.5 mt-1">
+                    <MapPin className="w-4 h-4" /> region {geohash}
+                  </p>
+                ) : null}
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-text-tertiary uppercase tracking-wider">Mode</p>
-                <p className="text-sm font-semibold text-white mt-0.5">{DIVE_MODE_LABELS[Number(data?.mode) as DiveMode] ?? "-"}</p>
+                <p className="text-sm font-semibold text-white mt-0.5">{DIVE_MODE_LABELS[Number(h.mode) as DiveMode] ?? "-"}</p>
                 <div className="mt-1.5 flex justify-end">
-                  <FlagChip mode={Number(data?.mode)} purpose={Number(data?.purpose)} />
+                  <FlagChip mode={Number(h.mode)} purpose={draft ? Number(draft.data.purpose) : undefined} />
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap text-xs text-text-secondary">
-              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {fmtDate(d.diveDate as bigint)}</span>
-              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {bottomTime} min</span>
-              <span className="pill pill-teal">{DIVE_PURPOSE_LABELS[Number(data?.purpose) as DivePurpose] ?? "-"}</span>
+              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {fmtDay()}</span>
+              {startTime && <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> in {startTime}</span>}
+              {draft && <span className="pill pill-teal">{DIVE_PURPOSE_LABELS[Number(draft.data.purpose) as DivePurpose] ?? "-"}</span>}
               <span className="pill">{UNIT_SYSTEM_LABELS[units]}</span>
               {hasCoords && (
                 <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="pill pill-surf hover:brightness-125">
@@ -172,61 +190,100 @@ export default function DiveDetail({ embedded, diveId: propDiveId }: DiveDetailP
         </div>
       </div>
 
-      {/* Key metrics */}
+      {/* Key metrics from the on-chain header */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <Metric icon={<Waves className="w-3.5 h-3.5" />} label="Max Depth" value={`${maxDepth}`} unit={dU} />
-        <Metric icon={<Clock className="w-3.5 h-3.5" />} label="Bottom Time" value={`${bottomTime}`} unit="min" />
+        <Metric icon={<Clock className="w-3.5 h-3.5" />} label="Bottom Time" value={`${bottomMin}`} unit="min" />
         <Metric icon={<Droplets className="w-3.5 h-3.5" />} label="Gas Mix" value={gasDisplay} small />
-        <Metric icon={<Activity className="w-3.5 h-3.5" />} label="Avg Depth" value={`${avgDepth}`} unit={dU} />
+        <Metric icon={<Activity className="w-3.5 h-3.5" />} label="Total Time" value={`${durationMin}`} unit="min" />
       </div>
 
       {/* Profile sketch */}
       <div className="glass-card hairline p-5 mb-4">
         <div className="section-title"><Activity className="w-4 h-4" /> Dive Profile</div>
-        <DiveProfileSketch dive={parsed.d as never} height={230} />
+        <DiveProfileSketch dive={{ ...h, draft, attestations: attList }} height={230} />
       </div>
 
-      {/* Telemetry */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div className="glass-card hairline p-5">
-          <div className="section-title"><Thermometer className="w-4 h-4" /> Environment</div>
-          <div className="grid grid-cols-2 gap-3">
-            <Telemetry icon={<Thermometer className="w-3 h-3" />} label="Water Temp" value={`${env?.waterTemp ?? 0}${tU}`} />
-            <Telemetry icon={<Wind className="w-3 h-3" />} label="Air Temp" value={`${env?.airTemp ?? 0}${tU}`} />
-            <Telemetry icon={<Eye className="w-3 h-3" />} label="Bottom Type" value={BOTTOM_TYPE_LABELS[Number(env?.bottomType) as BottomType] ?? "-"} />
-            <Telemetry icon={<Wind className="w-3 h-3" />} label="Current" value={`${Number(env?.currentKnots ?? 0)} kn`} />
-            {Boolean(env?.weatherConditions) && <Telemetry icon={<Wind className="w-3 h-3" />} label="Weather" value={String(env?.weatherConditions)} />}
-            {hasCoords && (
-              <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="glass-card-inner p-3 no-underline hover:border-surf/30 transition-colors">
-                <p className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><Navigation className="w-3 h-3" /> Coordinates</p>
-                <p className="text-sm font-medium text-surf mt-1">{coordsStr}</p>
-              </a>
-            )}
+      {/* Planning header fields (always on-chain) */}
+      {(schedule || rg || rgAfter || siMin > 0) && (
+        <div className="glass-card hairline p-5 mb-4">
+          <div className="section-title"><FileCheck2 className="w-4 h-4" /> Table &amp; repetitive planning</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {schedule && <Telemetry icon={<Activity className="w-3 h-3" />} label="Table schedule" value={schedule} />}
+            {rg && <Telemetry icon={<Activity className="w-3 h-3" />} label="Group at surfacing" value={rg} />}
+            {rgAfter && <Telemetry icon={<Activity className="w-3 h-3" />} label="Group after interval" value={rgAfter} />}
+            {siMin > 0 && <Telemetry icon={<Clock className="w-3 h-3" />} label="Surface interval" value={`${siMin} min`} />}
           </div>
         </div>
+      )}
 
-        <div className="glass-card hairline p-5">
-          <div className="section-title"><Cylinder className="w-4 h-4" /> Equipment &amp; Gas</div>
-          <div className="grid grid-cols-2 gap-3">
-            <Telemetry icon={<Cylinder className="w-3 h-3" />} label="Suit" value={SUIT_TYPE_LABELS[Number(data?.suit) as SuitType] ?? "-"} />
-            <Telemetry icon={<Droplets className="w-3 h-3" />} label="Gas" value={`${gasLabel} · O₂ ${o2Pct}%`} />
-            <Telemetry icon={<Droplets className="w-3 h-3" />} label="Pressure In" value={`${gas?.cylinderPressureIn ?? 0} ${pU}`} />
-            <Telemetry icon={<Droplets className="w-3 h-3" />} label="Pressure Out" value={`${gas?.cylinderPressureOut ?? 0} ${pU}`} />
-            {decomp && Number(decomp.decompType) !== 0 && (
-              <>
-                <Telemetry icon={<AlertTriangle className="w-3 h-3" />} label="Deco" value={DECOMP_TYPE_LABELS[Number(decomp.decompType) as DecompressionType] ?? "-"} />
-                <Telemetry icon={<Clock className="w-3 h-3" />} label="Deco Time" value={`${decomp.totalDecompTimeMinutes} min`} />
-              </>
-            )}
+      {/* Content hash */}
+      <div className="glass-card hairline p-5 mb-4">
+        <div className="section-title"><Lock className="w-4 h-4" /> Profile commitment</div>
+        <p className="text-[11px] text-text-tertiary break-all font-mono">{h.contentHash}</p>
+        <p className="text-[11px] text-text-tertiary mt-2">
+          SHA-256 of the exact UDDF profile bytes. Buddies' attestations sign this hash.
+          {profileURI ? (
+            <> Published (encrypted): <span className="font-mono text-surf">{profileURI}</span></>
+          ) : draft ? (
+            " Full profile kept in this browser; export it from your Logbook."
+          ) : (
+            " Full profile not held on this device."
+          )}
+        </p>
+      </div>
+
+      {/* Telemetry: only meaningful with the local profile draft */}
+      {draft ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="glass-card hairline p-5">
+            <div className="section-title"><Thermometer className="w-4 h-4" /> Environment</div>
+            <div className="grid grid-cols-2 gap-3">
+              <Telemetry icon={<Thermometer className="w-3 h-3" />} label="Water Temp" value={`${draft.env.waterTemp}${tU}`} />
+              <Telemetry icon={<Wind className="w-3 h-3" />} label="Air Temp" value={`${draft.env.airTemp}${tU}`} />
+              <Telemetry icon={<Eye className="w-3 h-3" />} label="Bottom Type" value={BOTTOM_TYPE_LABELS[Number(draft.env.bottomType) as BottomType] ?? "-"} />
+              <Telemetry icon={<Wind className="w-3 h-3" />} label="Current" value={`${Number(draft.env.currentKnots)} kn`} />
+              {Boolean(draft.env.weatherConditions) && <Telemetry icon={<Wind className="w-3 h-3" />} label="Weather" value={draft.env.weatherConditions} />}
+              {hasCoords && (
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="glass-card-inner p-3 no-underline hover:border-surf/30 transition-colors">
+                  <p className="text-[10px] text-text-tertiary uppercase tracking-wider flex items-center gap-1"><Navigation className="w-3 h-3" /> Coordinates</p>
+                  <p className="text-sm font-medium text-surf mt-1">{coordsStr}</p>
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div className="glass-card hairline p-5">
+            <div className="section-title"><Cylinder className="w-4 h-4" /> Equipment &amp; Gas</div>
+            <div className="grid grid-cols-2 gap-3">
+              <Telemetry icon={<Cylinder className="w-3 h-3" />} label="Suit" value={SUIT_TYPE_LABELS[Number(draft.data.suit) as SuitType] ?? "-"} />
+              <Telemetry icon={<Droplets className="w-3 h-3" />} label="Gas" value={`${gasDisplay} · O₂ ${bpsToPercent(Number(h.o2Bps))}%`} />
+              <Telemetry icon={<Droplets className="w-3 h-3" />} label="Pressure In" value={`${draft.gas.cylinderPressureIn} ${pU}`} />
+              <Telemetry icon={<Droplets className="w-3 h-3" />} label="Pressure Out" value={`${draft.gas.cylinderPressureOut} ${pU}`} />
+              {Number(draft.decomp.decompType) !== 0 && (
+                <>
+                  <Telemetry icon={<AlertTriangle className="w-3 h-3" />} label="Deco" value={DECOMP_TYPE_LABELS[Number(draft.decomp.decompType) as DecompressionType] ?? "-"} />
+                  <Telemetry icon={<Clock className="w-3 h-3" />} label="Deco Time" value={`${draft.decomp.totalDecompTimeMinutes} min`} />
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="glass-card hairline p-5 mb-4 text-center">
+          <Lock className="w-6 h-6 text-text-tertiary mx-auto mb-2" />
+          <p className="text-xs text-text-tertiary">
+            Environment, equipment and remarks live in the encrypted off-chain profile.
+            {profileURI ? " Fetch it via the published URI with the owner's vault key." : " This device does not hold the profile for this dive."}
+          </p>
+        </div>
+      )}
 
       {/* Remarks */}
-      {Boolean(d.remarks) && (
+      {draft?.remarks && (
         <div className="glass-card hairline p-5 mb-4">
           <div className="section-title">Remarks</div>
-          <p className="text-sm text-text-secondary leading-relaxed">{String(d.remarks)}</p>
+          <p className="text-sm text-text-secondary leading-relaxed">{draft.remarks}</p>
         </div>
       )}
 
