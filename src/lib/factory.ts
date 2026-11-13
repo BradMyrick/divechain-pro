@@ -15,7 +15,7 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
  * deployment = code change + full verification (see deployment/README.md).
  *
  * Both live deployments verified byte-identical to this repo's compilation
- * (solc 0.8.34 / cancun / optimizer 200) — see deployment/foundry.toml.
+ * (v1: solc 0.8.34; v2: solc 0.8.38, cancun + optimizer 200); see deployment/foundry.toml.
  * Anvil: the first default-foundry deployer account address (nonce 0).
  */
 export const FACTORY_ADDRESSES: Record<number, `0x${string}`> = {

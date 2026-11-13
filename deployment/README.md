@@ -77,7 +77,7 @@ validation) are part of the standard sources.
 character change (an em-dash replaced by a comma in the `_HALF_N` comment, to
 keep the source ASCII); functionally identical, but not byte-identical. The
 test file differs only in import paths for this project's `src/` layout. The
-toolchain is pinned locally (solc 0.8.34 / cancun / optimizer 200, below);
+toolchain is pinned locally (solc 0.8.38 / cancun / optimizer 200, below);
 upstream compiles the same `pragma ^0.8.20` sources on its own pins.
 
 The `interfaces/` directory stays byte-identical to the ERC assets (excluded
@@ -95,10 +95,15 @@ forge build
 forge test
 ```
 
-> Compiler: solc **0.8.34**, `evm_version = cancun`, optimizer 200 runs —
-> verified to reproduce the deployed factory bytecode byte-for-byte. Avalanche
-> has supported Cancun since the Durango upgrade (Feb 2024). Sources remain
-> `pragma ^0.8.20`, so upstream (PR #1735) is unaffected by this toolchain pin.
+> Compiler: solc **0.8.38**, `evm_version = cancun`, optimizer 200 runs;
+> pinned for the v2 deployments. Measured gas is identical to the 0.8.34 pin
+> the v1 factories were byte-verified at (logDive median 154,165;
+> createLogbook median 2,341,779; SovereignDiveLog runtime code unchanged
+> apart from the metadata tail), and 0.8.38 is the bug-fix-only release with
+> an empty known-bug list. Avalanche has supported Cancun since the Durango
+> upgrade (Feb 2024); the Helicon upgrade (2026) changed execution and gas
+> pricing, not the EVM fork level. Sources remain `pragma ^0.8.20`, so
+> upstream (PR #1735) is unaffected by this toolchain pin.
 
 ## Deploy the factory
 
@@ -146,13 +151,16 @@ from the contract itself:
 
 | Network | Chain ID | Contract | Address |
 | --- | --- | --- | --- |
-| Fuji | 43113 | DiveLogFactory | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
-| C-Chain | 43114 | DiveLogFactory | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
+| Fuji | 43113 | DiveLogFactory (v1) | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
+| C-Chain | 43114 | DiveLogFactory (v1) | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
 | Fuji | 43113 | SovereignDiveLog (legacy, pre-factory) | `0x5adf6d5150a62d67fa1a18ac7dde8fcbad392565` |
 
-> Both factories were deployed via Avalanche Builders Hub from
+> The v1 factories were deployed via Avalanche Builders Hub from
 > `flattened/DiveLogFactory.flattened.sol` and verified byte-identical to this
-> repo's compilation (solc 0.8.34 / cancun / optimizer 200) by direct
-> `eth_getCode` comparison. The legacy Fuji `SovereignDiveLog` (and any logbook
-> deployed directly from the dApp before the factories) remains fully usable —
-> its owner registers it once via `adoptLogbook`.
+> repo's compilation at the v1-era pin (solc 0.8.34 / cancun / optimizer 200)
+> by direct `eth_getCode` comparison. They mint v1-interface logbooks only;
+> the v2 cutover deploys new factories from the 0.8.38 pin (rows added here
+> once deployed and byte-verified). The legacy Fuji `SovereignDiveLog` (and
+> any logbook deployed directly from the dApp before the factories) remains
+> fully usable on the v1 factories; its owner registers it once via
+> `adoptLogbook`.

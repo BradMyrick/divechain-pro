@@ -268,16 +268,19 @@ The `DiveLogFactory` is deployed once per network (see
 ## Source & deployments
 
 This repository is the complete product: dApp, contracts, tests, indexer. The
-`DiveLogFactory` contracts below were deployed from this exact source tree and
-verified **byte-identical** to this repository's compilation (direct
-`eth_getCode` comparison — see [`deployment/README.md`](./deployment/README.md)):
+`DiveLogFactory` contracts below (v1 interface) were deployed from this source
+tree at the v1-era compiler pin (solc 0.8.34 / cancun / optimizer 200) and
+verified **byte-identical** to that compilation (direct `eth_getCode`
+comparison; see [`deployment/README.md`](./deployment/README.md)):
 
-| Network | Chain ID | DiveLogFactory |
+| Network | Chain ID | DiveLogFactory (v1) |
 | --- | --- | --- |
 | Avalanche C-Chain | 43114 | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
 | Avalanche Fuji | 43113 | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
 
-What you deploy is what you read — no unaudited bytecode in between.
+The ERC-8260 v2 cutover deploys new factories from the 0.8.38 pin; their
+addresses land here once deployed and byte-verified. What you deploy is what
+you read; no unaudited bytecode in between.
 
 ## License
 
