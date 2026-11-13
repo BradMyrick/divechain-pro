@@ -151,16 +151,22 @@ from the contract itself:
 
 | Network | Chain ID | Contract | Address |
 | --- | --- | --- | --- |
-| Fuji | 43113 | DiveLogFactory (v1) | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
-| C-Chain | 43114 | DiveLogFactory (v1) | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
+| Fuji | 43113 | DiveLogFactory **v2** | `0x2ec5e579E0B3e31C4c3e6ABE1F7c0eF7ACa4E740` |
+| C-Chain | 43114 | DiveLogFactory **v2** | `0x36eB0768Ba245A4D002F35E3a17D3210c9C6BB83` |
+| Fuji | 43113 | DiveLogFactory (v1, legacy) | `0x921dc74BA049748BdFeE471F641f48688aDF8b49` |
+| C-Chain | 43114 | DiveLogFactory (v1, legacy) | `0x3894070DDdA804f9ba96116c9bd810eF745f5999` |
 | Fuji | 43113 | SovereignDiveLog (legacy, pre-factory) | `0x5adf6d5150a62d67fa1a18ac7dde8fcbad392565` |
 
-> The v1 factories were deployed via Avalanche Builders Hub from
-> `flattened/DiveLogFactory.flattened.sol` and verified byte-identical to this
-> repo's compilation at the v1-era pin (solc 0.8.34 / cancun / optimizer 200)
-> by direct `eth_getCode` comparison. They mint v1-interface logbooks only;
-> the v2 cutover deploys new factories from the 0.8.38 pin (rows added here
-> once deployed and byte-verified). The legacy Fuji `SovereignDiveLog` (and
-> any logbook deployed directly from the dApp before the factories) remains
-> fully usable on the v1 factories; its owner registers it once via
-> `adoptLogbook`.
+> The v2 factories were deployed 2026-11-13 from Remix with
+> `flattened/DiveLogFactory.flattened.sol` at solc 0.8.38 / cancun /
+> optimizer 200, and verified byte-identical to this repo's compilation by
+> direct `eth_getCode` comparison on both chains (only the source-metadata
+> hash differs, flattened vs multi-file layout). They mint ERC-8260 v2
+> thin-header logbooks and are what the dApp pins.
+>
+> The v1 factories were deployed via Avalanche Builders Hub at the v1-era pin
+> (solc 0.8.34 / cancun / optimizer 200) with the same verification; they mint
+> v1-interface logbooks only and remain live for their existing books. The
+> legacy Fuji `SovereignDiveLog` (and any logbook deployed directly from the
+> dApp before the factories) remains fully usable on the v1 factories; its
+> owner registers it once via `adoptLogbook`.
